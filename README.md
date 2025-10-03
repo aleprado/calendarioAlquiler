@@ -76,19 +76,19 @@ El output `calendar_api_uri` devuelve la URL pública de la Cloud Function.
 `deploy.yml` se ejecuta en cada push a `main`:
 
 1. Lint + build del frontend.
-2. Deploy a Firebase Hosting usando el artefacto generado.
-3. Lint + build de las funciones, `terraform plan` y `terraform apply` para la infraestructura (Cloud Function + Firestore).
+2. Deploy a Firebase Hosting usando el artefacto generado (lee el JSON del service account ubicado en la raíz del repo).
+3. Lint + build de las funciones, `terraform plan` y `terraform apply` para la infraestructura (Cloud Function + Firestore) reutilizando ese mismo JSON.
 
 ### Secrets requeridos
 
 | Secret | Uso |
 | --- | --- |
-| `FIREBASE_SERVICE_ACCOUNT` | JSON del service account con rol `Firebase Hosting Admin`. |
 | `FIREBASE_PROJECT_ID` | ID del proyecto Firebase/GCP. |
-| `GCP_SA_KEY` | Service account JSON con permisos para Terraform (Cloud Functions, Storage, Firestore, IAM). |
 | `GCP_PROJECT_ID` | Proyecto de GCP donde se desplegará todo. |
 | `GCP_FUNCTION_BASIC_AUTH_USER` | Usuario para la autenticación básica. |
 | `GCP_FUNCTION_BASIC_AUTH_PASSWORD` | Contraseña para la autenticación básica. |
+
+> ⚠️ Por simplicidad el workflow lee el archivo `calendarioalquiler-60e74-231618c6a9bb.json` del repositorio. Evita exponerlo en repos públicos; lo ideal es mantenerlo fuera del control de versiones y cargarlo como secret en GitHub.
 
 ## Próximos pasos
 

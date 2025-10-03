@@ -15,7 +15,7 @@ import type { SyncResponse } from './types'
 const app = express()
 app.use(express.json())
 
-const asyncHandler = (handler: (req: Request, res: Response) => Promise<unknown> | unknown) =>
+const asyncHandler = (handler: (req: Request, res: Response) => void | Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(handler(req, res)).catch(next)
   }
@@ -50,21 +50,25 @@ app.get(
   }),
 )
 
-app.post('/properties/:propertyId/events', asyncHandler(async (req, res) => {
-  const parseResult = eventPayloadSchema.safeParse(req.body)
-  if (!parseResult.success) {
-    return res.status(400).json({ message: 'Payload inválido', issues: parseResult.error.issues })
-  }
+app.post(
+  '/properties/:propertyId/events',
+  asyncHandler(async (req, res) => {
+    const parseResult = eventPayloadSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Payload inválido', issues: parseResult.error.issues })
+      return
+    }
 
-  try {
-    const propertyId = getPropertyId(req)
-    const event = await createManualEvent(propertyId, parseResult.data)
-    res.status(201).json({ event })
-  } catch (error) {
-    console.error('[createManualEvent]', error)
-    res.status(500).json({ message: 'No se pudo crear el evento.' })
-  }
-}))
+    try {
+      const propertyId = getPropertyId(req)
+      const event = await createManualEvent(propertyId, parseResult.data)
+      res.status(201).json({ event })
+    } catch (error) {
+      console.error('[createManualEvent]', error)
+      res.status(500).json({ message: 'No se pudo crear el evento.' })
+    }
+  }),
+)
 
 app.delete(
   '/properties/:propertyId/events/:eventId',
@@ -81,38 +85,42 @@ app.delete(
   }),
 )
 
-app.post('/properties/:propertyId/airbnb/sync', asyncHandler(async (req, res) => {
-  const propertyId = getPropertyId(req)
-  const parseResult = syncPayloadSchema.safeParse(req.body)
-  if (!parseResult.success) {
-    return res.status(400).json({ message: 'Payload inválido', issues: parseResult.error.issues })
-  }
-
-  try {
-    const { icalUrl, includeTentative = false } = parseResult.data
-    const icsRaw = await downloadIcs(icalUrl)
-    const { confirmed, tentative } = parseAirbnbIcs(icsRaw, includeTentative)
-
-    await replaceAirbnbEvents(propertyId, confirmed, includeTentative ? tentative : [])
-
-    const payload: SyncResponse = {
-      propertyId,
-      fetchedAt: new Date().toISOString(),
-      totalEvents: confirmed.length + tentative.length,
-      confirmedEvents: confirmed,
-      tentativeEvents: tentative,
+app.post(
+  '/properties/:propertyId/airbnb/sync',
+  asyncHandler(async (req, res) => {
+    const propertyId = getPropertyId(req)
+    const parseResult = syncPayloadSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Payload inválido', issues: parseResult.error.issues })
+      return
     }
 
-    res.status(200).json(payload)
-  } catch (error) {
-    console.error('[syncAirbnb]', error)
-    const message =
-      error instanceof Error
-        ? `No se pudo obtener el calendario desde Airbnb: ${error.message}`
-        : 'No se pudo obtener el calendario desde Airbnb.'
-    res.status(502).json({ message })
-  }
-}))
+    try {
+      const { icalUrl, includeTentative = false } = parseResult.data
+      const icsRaw = await downloadIcs(icalUrl)
+      const { confirmed, tentative } = parseAirbnbIcs(icsRaw, includeTentative)
+
+      await replaceAirbnbEvents(propertyId, confirmed, includeTentative ? tentative : [])
+
+      const payload: SyncResponse = {
+        propertyId,
+        fetchedAt: new Date().toISOString(),
+        totalEvents: confirmed.length + tentative.length,
+        confirmedEvents: confirmed,
+        tentativeEvents: tentative,
+      }
+
+      res.status(200).json(payload)
+    } catch (error) {
+      console.error('[syncAirbnb]', error)
+      const message =
+        error instanceof Error
+          ? `No se pudo obtener el calendario desde Airbnb: ${error.message}`
+          : 'No se pudo obtener el calendario desde Airbnb.'
+      res.status(502).json({ message })
+    }
+  }),
+)
 
 app.use((error: unknown, _req: Request, res: Response) => {
   console.error('[calendarApi][unhandled]', error)
