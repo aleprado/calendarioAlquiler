@@ -49,13 +49,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Read Firebase service account
-        id: firebase_sa
-        run: |
-          echo "json<<EOF" >> $GITHUB_OUTPUT
-          cat calendarioalquiler-60e74-firebase-adminsdk-fbsvc-78a8ab1634.json >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Download built artifact
         uses: actions/download-artifact@v4
         with:
@@ -66,7 +59,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ steps.firebase_sa.outputs.json }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
@@ -81,13 +74,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Read GCP service account
-        id: gcp_sa
-        run: |
-          echo "json<<EOF" >> $GITHUB_OUTPUT
-          cat calendarioalquiler-60e74-firebase-adminsdk-fbsvc-78a8ab1634.json >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -118,10 +104,11 @@ jobs:
         with:
           terraform_version: 1.6.6
 
+      # Autenticación a GCP usando el JSON guardado en secrets
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ steps.gcp_sa.outputs.json }}
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Configure gcloud
         uses: google-github-actions/setup-gcloud@v2
