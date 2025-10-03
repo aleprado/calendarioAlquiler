@@ -14,13 +14,10 @@ jobs:
   validate_web:
     name: Build & Test Web
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -44,22 +41,31 @@ jobs:
     name: Deploy Firebase Hosting
     runs-on: ubuntu-latest
     needs: validate_web
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download built artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: web-dist
           path: dist
+
+      # (Opcional) sanity check del JSON del secret
+      - name: Auth sanity check (optional)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - name: gcloud check (optional)
+        run: |
+          gcloud auth list
+          gcloud projects describe ${{ secrets.FIREBASE_PROJECT_ID }} >/dev/null
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccountBase64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_B64 }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
@@ -70,13 +76,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate_web
     environment: production
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
