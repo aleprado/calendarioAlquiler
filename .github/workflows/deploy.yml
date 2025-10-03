@@ -59,7 +59,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          firebaseServiceAccountBase64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_B64 }}
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
@@ -104,7 +104,6 @@ jobs:
         with:
           terraform_version: 1.6.6
 
-      # Autenticación GCP con JSON del secret (NO mezclar con WIF)
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -116,12 +115,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      # (Opcional) debug de auth
-      - name: Debug auth
-        run: |
-          gcloud auth list
-          gcloud config list project
 
       - name: Terraform Init
         run: terraform init
