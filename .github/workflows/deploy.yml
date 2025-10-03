@@ -86,7 +86,7 @@ jobs:
         id: gcp_sa
         run: |
           echo "json<<EOF" >> $GITHUB_OUTPUT
-          cat calendarioalquiler-60e74-231618c6a9bb.json >> $GITHUB_OUTPUT
+          cat calendarioalquiler-60e74-firebase-adminsdk-fbsvc-78a8ab1634.json >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
