@@ -2,8 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -22,7 +21,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm install
 
       - name: Lint
@@ -49,17 +48,19 @@ jobs:
           name: web-dist
           path: dist
 
-      # (Opcional) sanity check del JSON del secret
-      - name: Auth sanity check (optional)
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          create_credentials_file: true
-          export_environment_variables: true
-      - name: gcloud check (optional)
+      # Sanity check: verifica que el secret es JSON válido y coincide el project/SA
+      - name: SA sanity check (no keys)
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          gcloud auth list
-          gcloud projects describe ${{ secrets.FIREBASE_PROJECT_ID }} >/dev/null
+          set -euo pipefail
+          echo "$FIREBASE_SERVICE_ACCOUNT" > sa.json
+          # valida JSON
+          node -e "JSON.parse(require('fs').readFileSync('sa.json','utf8'))"
+          echo "client_email: $(jq -r .client_email sa.json)"
+          echo "project_id:  $(jq -r .project_id sa.json)"
+          echo "private_key_id (last6): $(jq -r .private_key_id sa.json | tail -c 7)"
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -87,10 +88,10 @@ jobs:
             package-lock.json
             functions/package-lock.json
 
-      - name: Install root dependencies
+      - name: Install root deps
         run: npm install
 
-      - name: Install function dependencies
+      - name: Install function deps
         run: npm install
         working-directory: functions
 
@@ -107,10 +108,11 @@ jobs:
         with:
           terraform_version: 1.6.6
 
+      # Auth para Terraform usando TU secret existente: GCP_SA_KEY
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
           create_credentials_file: true
           export_environment_variables: true
 
