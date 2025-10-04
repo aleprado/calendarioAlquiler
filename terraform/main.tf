@@ -94,8 +94,8 @@ resource "google_storage_bucket_object" "functions_source" {
 }
 
 resource "google_app_engine_application" "app" {
-  project      = var.project_id
-  location_id  = var.firestore_location
+  project       = var.project_id
+  location_id   = var.firestore_location
   database_type = "CLOUD_FIRESTORE"
 
   lifecycle {
@@ -106,10 +106,10 @@ resource "google_app_engine_application" "app" {
 }
 
 resource "google_firestore_database" "default" {
-  project        = var.project_id
-  name           = "(default)"
-  location_id    = var.firestore_location
-  type           = "FIRESTORE_NATIVE"
+  project          = var.project_id
+  name             = "(default)"
+  location_id      = var.firestore_location
+  type             = "FIRESTORE_NATIVE"
   concurrency_mode = "OPTIMISTIC"
 
   lifecycle {
@@ -139,8 +139,8 @@ resource "google_cloudfunctions2_function" "calendar_api" {
     service_account_email = google_service_account.functions.email
     available_memory      = "512M"
     timeout_seconds       = 60
-    ingress_settings       = "ALLOW_ALL"
-    max_instance_count     = 5
+    ingress_settings      = "ALLOW_ALL"
+    max_instance_count    = 5
     environment_variables = {
       NODE_ENV              = var.environment
       BASIC_AUTH_USER       = var.basic_auth_username
