@@ -207,6 +207,7 @@
   display: grid;
   gap: 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-auto-rows: 1fr;
 }
 
 .multi-month-calendar__cell {
@@ -228,7 +229,7 @@
 
 .multi-month-calendar .rbc-calendar {
   flex: 1;
-  min-height: 100%;
+  height: 100%;
   background: #ffffff;
   border-radius: 0.85rem;
   overflow: hidden;
@@ -286,7 +287,9 @@
   }
 
   .calendar-card {
-    padding: 1rem;
-    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
 }
