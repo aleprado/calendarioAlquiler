@@ -49,7 +49,12 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
-  const propertyId = useMemo(() => (import.meta.env.VITE_PROPERTY_ID as string | undefined) ?? 'default-property', [])
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const propertyId = useMemo(
+    () => (import.meta.env.VITE_PROPERTY_ID as string | undefined) ?? 'default-property',
+    [],
+  )
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true)
@@ -64,9 +69,45 @@ function App() {
     }
   }, [propertyId])
 
+  const syncAirbnb = useCallback(async () => {
+    // POST /properties/:id/airbnb/sync (sin body → backend toma AIRBNB_ICAL_URL del env)
+    setIsSyncing(true)
+    setGlobalError(null)
+    try {
+      await fetch(`/properties/${propertyId}/airbnb/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // body opcional: si quisieras pasar una URL explícita, envía { icalUrl: '...' }
+        body: JSON.stringify({}),
+      }).then(async (r) => {
+        if (!r.ok) {
+          const msg = await r.text().catch(() => '')
+          throw new Error(msg || `Sync falló con status ${r.status}`)
+        }
+      })
+      await loadEvents()
+    } catch (error) {
+      setGlobalError(error instanceof Error ? error.message : 'No se pudo sincronizar con Airbnb.')
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [propertyId, loadEvents])
+
   useEffect(() => {
-    loadEvents()
-  }, [loadEvents])
+    (async () => {
+      await loadEvents()
+      // Si no hay nada en Firestore, intentamos poblar desde Airbnb automáticamente
+      if (!globalError && events.length === 0) {
+        // Esperamos a que termine el primer load; si sigue vacío, probamos sync
+        await syncAirbnb()
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // solo en el primer render
+
+  useEffect(() => {
+    // Si tras cargar sigue vacío (p. ej. primer run), podrías disparar sync aquí también si lo preferís.
+  }, [events.length])
 
   const handleSelectSlot = useCallback((slot: SlotInfo) => {
     const slots = Array.isArray(slot.slots) ? slot.slots : []
@@ -95,11 +136,14 @@ function App() {
       setModalError(null)
 
       try {
-        const payload = await createEvent({
-          title,
-          start: pendingRange.start.toISOString(),
-          end: pendingRange.end.toISOString(),
-        }, propertyId)
+        const payload = await createEvent(
+          {
+            title,
+            start: pendingRange.start.toISOString(),
+            end: pendingRange.end.toISOString(),
+          },
+          propertyId,
+        )
 
         setEvents((prev) => {
           const next = [...prev, toCalendarEvent(payload)]
@@ -115,17 +159,20 @@ function App() {
     [handleCloseModal, pendingRange, propertyId],
   )
 
-  const handleRemoveEvent = useCallback(async (event: CalendarEvent) => {
-    const shouldDelete = window.confirm(`¿Eliminar el evento "${event.title}"?`)
-    if (!shouldDelete) return
+  const handleRemoveEvent = useCallback(
+    async (event: CalendarEvent) => {
+      const shouldDelete = window.confirm(`¿Eliminar el evento "${event.title}"?`)
+      if (!shouldDelete) return
 
-    try {
-      await deleteEvent(event.id, propertyId)
-      setEvents((prev) => prev.filter((item) => item.id !== event.id))
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : 'No se pudo eliminar el evento.')
-    }
-  }, [propertyId])
+      try {
+        await deleteEvent(event.id, propertyId)
+        setEvents((prev) => prev.filter((item) => item.id !== event.id))
+      } catch (error) {
+        setGlobalError(error instanceof Error ? error.message : 'No se pudo eliminar el evento.')
+      }
+    },
+    [propertyId],
+  )
 
   const eventColors = useMemo(() => {
     const palette = ['#2563eb', '#0ea5e9', '#14b8a6', '#f97316', '#a855f7']
@@ -136,9 +183,7 @@ function App() {
 
     sortedEvents.forEach((event) => {
       const baseIndex =
-        event.id
-          .split('')
-          .reduce((acc, char) => acc + char.charCodeAt(0), 0) % palette.length
+        event.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % palette.length
       let colorIndex = baseIndex
 
       if (palette.length > 1 && colorIndex === lastColorIndex) {
@@ -155,7 +200,6 @@ function App() {
   const eventPropGetter = useCallback<CalendarEventPropGetter>(
     (event) => {
       const color = eventColors.colorMap.get(event.id) ?? eventColors.palette[0]
-
       return {
         style: {
           backgroundColor: color,
@@ -174,9 +218,14 @@ function App() {
           <h1>Calendario de Alquileres</h1>
           <p className="subtitle">Selecciona un rango de fechas en el calendario para crear un evento.</p>
         </div>
-        <button type="button" className="secondary" onClick={loadEvents} disabled={isLoading}>
-          Recargar eventos
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button type="button" className="secondary" onClick={loadEvents} disabled={isLoading || isSyncing}>
+            {isLoading ? 'Cargando...' : 'Recargar eventos'}
+          </button>
+          <button type="button" className="secondary" onClick={syncAirbnb} disabled={isSyncing || isLoading}>
+            {isSyncing ? 'Sincronizando…' : 'Sincronizar Airbnb'}
+          </button>
+        </div>
       </header>
 
       {globalError && (

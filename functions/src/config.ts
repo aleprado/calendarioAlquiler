@@ -3,6 +3,7 @@ export const config = {
   basicAuthPassword: process.env.BASIC_AUTH_PASSWORD ?? '',
   allowUnauthenticated: process.env.ALLOW_UNAUTHENTICATED === 'true',
   defaultPropertyId: process.env.DEFAULT_PROPERTY_ID ?? 'default-property',
+  airbnbIcalUrl: process.env.AIRBNB_ICAL_URL ?? '',   // ← nuevo
 }
 
 export const requireAuth = () => {
