@@ -1,145 +1,162 @@
-name: Deploy
+terraform {
+  required_version = ">= 1.6.0"
 
-on:
-  push:
-    branches: [ main ]
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.38"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.38"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
+  }
+}
 
-permissions:
-  contents: read
-  id-token: write
-  deployments: write
+locals {
+  default_bucket_name = "${var.project_id}-functions-${var.environment}"
+  bucket_name         = var.functions_bucket_name != "" ? var.functions_bucket_name : local.default_bucket_name
+  archive_path        = pathexpand("${path.module}/function.zip")
+}
 
-jobs:
-  validate_web:
-    name: Build & Test Web
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - name: Install deps
-        run: npm install
-      - name: Lint
-        run: npm run lint
-      - name: Build
-        run: npm run build
-      - name: Upload web artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: dist
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
 
-  deploy_web:
-    name: Deploy Firebase Hosting
-    runs-on: ubuntu-latest
-    needs: validate_web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: dist
-      - name: SA sanity check (no keys)
-        shell: bash
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          set -euo pipefail
-          echo "$FIREBASE_SERVICE_ACCOUNT" > sa.json
-          node -e "JSON.parse(require('fs').readFileSync('sa.json','utf8'))"
-          echo "client_email: $(jq -r .client_email sa.json)"
-          echo "project_id:  $(jq -r .project_id sa.json)"
-          echo "private_key_id (last6): $(jq -r .private_key_id sa.json | tail -c 7)"
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-        env:
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
 
-  deploy_functions:
-    name: Build Functions & Apply Terraform
-    runs-on: ubuntu-latest
-    needs: validate_web
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
+resource "google_project_service" "required" {
+  for_each = toset([
+    "appengine.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "firestore.googleapis.com",
+    "run.googleapis.com",
+  ])
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            functions/package-lock.json
+  project = var.project_id
+  service = each.key
+}
 
-      - name: Install root deps
-        run: npm install
-      - name: Install function deps
-        run: npm install
-        working-directory: functions
-      - name: Lint functions
-        run: npm run lint
-        working-directory: functions
-      - name: Build functions
-        run: npm run build
-        working-directory: functions
+resource "google_service_account" "functions" {
+  account_id   = "airbnb-calendar-functions"
+  display_name = "Airbnb Calendar Functions"
+}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
+resource "google_project_iam_member" "functions_invoker" {
+  for_each = toset([
+    "roles/run.invoker",
+    "roles/cloudfunctions.developer",
+    "roles/storage.objectViewer",
+    "roles/datastore.user",
+  ])
 
-      # Auth con la SA del secret GCP_SA_KEY
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-          create_credentials_file: true
-          export_environment_variables: true
-      - name: Configure gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Verify account & project
-        run: |
-          echo "SA: $(jq -r .client_email $GOOGLE_GHA_CREDS_PATH)"
-          gcloud auth list
-          gcloud config set account "$(jq -r .client_email $GOOGLE_GHA_CREDS_PATH)"
-          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.functions.email}"
+}
 
-      # Init antes del import
-      - name: Terraform Init
-        run: terraform init
-        working-directory: terraform
+resource "google_storage_bucket" "functions_source" {
+  name                        = local.bucket_name
+  location                    = var.region
+  uniform_bucket_level_access = true
+  force_destroy               = true
 
-      # IMPORTAR App Engine existente (una sola vez; ignora error si ya está importada)
-      - name: Terraform Import App Engine (one-off)
-        run: terraform import google_app_engine_application.app "apps/${{ secrets.GCP_PROJECT_ID }}" || true
-        working-directory: terraform
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 30
+    }
+  }
+}
 
-      - name: Terraform Fmt (check)
-        run: terraform fmt -check -diff -recursive
-        working-directory: terraform
+data "archive_file" "functions_bundle" {
+  type        = "zip"
+  source_dir  = var.functions_source_dir
+  output_path = local.archive_path
+}
 
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-        working-directory: terraform
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_basic_auth_username: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_USER }}
-          TF_VAR_basic_auth_password: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_PASSWORD }}
+resource "google_storage_bucket_object" "functions_source" {
+  name   = "functions/bundle-${data.archive_file.functions_bundle.output_md5}.zip"
+  bucket = google_storage_bucket.functions_source.name
+  source = data.archive_file.functions_bundle.output_path
+}
 
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
-        working-directory: terraform
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_basic_auth_username: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_USER }}
-          TF_VAR_basic_auth_password: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_PASSWORD }}
+resource "google_app_engine_application" "app" {
+  project       = var.project_id
+  location_id   = var.firestore_location
+  database_type = "CLOUD_FIRESTORE"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_firestore_database" "default" {
+  project          = var.project_id
+  name             = "(default)"
+  location_id      = var.firestore_location
+  type             = "FIRESTORE_NATIVE"
+  concurrency_mode = "OPTIMISTIC"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [google_app_engine_application.app]
+}
+
+resource "google_cloudfunctions2_function" "calendar_api" {
+  name     = "calendar-api"
+  location = var.region
+
+  build_config {
+    runtime     = var.runtime
+    entry_point = "calendarApi"
+
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions_source.name
+        object = google_storage_bucket_object.functions_source.name
+      }
+    }
+  }
+
+  service_config {
+    service_account_email = google_service_account.functions.email
+    available_memory      = "512M"
+    timeout_seconds       = 60
+    ingress_settings      = "ALLOW_ALL"
+    max_instance_count    = 5
+    environment_variables = {
+      NODE_ENV              = var.environment
+      BASIC_AUTH_USER       = var.basic_auth_username
+      BASIC_AUTH_PASSWORD   = var.basic_auth_password
+      DEFAULT_PROPERTY_ID   = var.default_property_id
+      ALLOW_UNAUTHENTICATED = var.allow_unauthenticated ? "true" : "false"
+    }
+  }
+
+  depends_on = [
+    google_project_service.required,
+    google_firestore_database.default,
+  ]
+}
+
+output "calendar_api_uri" {
+  description = "URL público de la Cloud Function calendar-api"
+  value       = google_cloudfunctions2_function.calendar_api.service_config[0].uri
+}
