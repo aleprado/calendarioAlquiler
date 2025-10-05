@@ -48,19 +48,16 @@ jobs:
           name: web-dist
           path: dist
 
-      # Sanity check: verifica que el secret es JSON válido y coincide el project/SA
-      - name: SA sanity check (no keys)
+      - name: SA sanity check
         shell: bash
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           set -euo pipefail
           echo "$FIREBASE_SERVICE_ACCOUNT" > sa.json
-          # valida JSON
           node -e "JSON.parse(require('fs').readFileSync('sa.json','utf8'))"
           echo "client_email: $(jq -r .client_email sa.json)"
           echo "project_id:  $(jq -r .project_id sa.json)"
-          echo "private_key_id (last6): $(jq -r .private_key_id sa.json | tail -c 7)"
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -108,7 +105,7 @@ jobs:
         with:
           terraform_version: 1.6.6
 
-      # Auth para Terraform usando TU secret existente: GCP_SA_KEY
+      # 🔐 Autenticación con la misma SA
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -121,12 +118,43 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      # 🪣 Crear bucket para backend remoto
+      - name: Ensure GCS backend bucket exists
+        run: |
+          set -euo pipefail
+          BUCKET="calendarioalquiler-tfstate"
+          PROJECT="${{ secrets.GCP_PROJECT_ID }}"
+          LOCATION="us-central1"
+
+          if ! gsutil ls -b "gs://$BUCKET" >/dev/null 2>&1; then
+            echo "Creating bucket gs://$BUCKET ..."
+            gcloud storage buckets create "gs://$BUCKET" \
+              --project "$PROJECT" \
+              --location "$LOCATION" \
+              --uniform-bucket-level-access
+          else
+            echo "Bucket gs://$BUCKET already exists."
+          fi
+
+          gcloud storage buckets update "gs://$BUCKET" --versioning
+          echo "✅ Bucket ready: gs://$BUCKET"
+
+      # 🧱 Init Terraform con backend fijo
       - name: Terraform Init
-        run: terraform init
+        run: |
+          terraform init \
+            -reconfigure \
+            -backend-config="bucket=calendarioalquiler-tfstate" \
+            -backend-config="project=${{ secrets.GCP_PROJECT_ID }}"
+        working-directory: terraform
+
+      # 🚫 Import del App Engine existente
+      - name: Import existing App Engine application
+        run: terraform import google_app_engine_application.app "apps/${{ secrets.GCP_PROJECT_ID }}" || true
         working-directory: terraform
 
       - name: Terraform Fmt
-        run: terraform fmt -check
+        run: terraform fmt -check -recursive
         working-directory: terraform
 
       - name: Terraform Plan
