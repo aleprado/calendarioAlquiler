@@ -1,154 +1,87 @@
-import * as admin from 'firebase-admin'
+import { Firestore } from '@google-cloud/firestore'
+import type { AirbnbCalendarEvent } from './types'
 
-/**
- * Inicialización de Admin SDK (idempotente) y configuración para ignorar `undefined`.
- * Esto evita errores del tipo "Cannot use undefined as a Firestore value".
- */
-if (admin.apps.length === 0) {
-  admin.initializeApp()
-  admin.firestore().settings({ ignoreUndefinedProperties: true })
-}
+const firestore = new Firestore()
 
-export const db = admin.firestore()
-
-export type PersistedEvent = {
+export interface PersistedEvent {
   id: string
   title: string
   start: string
   end: string
-  source?: 'airbnb' | 'manual'
-  status?: 'confirmed' | 'tentative' | 'cancelled'
+  source: 'manual' | 'airbnb'
+  status: 'confirmed' | 'tentative'
+  createdAt: string
+  updatedAt: string
+  externalId?: string
   description?: string
   location?: string
 }
 
-/** Remueve keys con valor `undefined` (acepta null y string vacío). */
-const omitUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
-  const out: Record<string, any> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = v
-  }
-  return out
+interface CreateEventInput {
+  title: string
+  start: string
+  end: string
+  description?: string
+  location?: string
 }
 
-const collectionForProperty = (propertyId: string) =>
-  db.collection('properties').doc(propertyId).collection('events')
+const eventsCollection = (propertyId: string) =>
+  firestore.collection('properties').doc(propertyId).collection('events')
 
-/** Lista todos los eventos de una propiedad (ordena por fecha de inicio si está disponible). */
-export async function listEvents(propertyId: string): Promise<PersistedEvent[]> {
-  const col = collectionForProperty(propertyId)
-  const snap = await col.get()
-
-  const items: PersistedEvent[] = []
-  snap.forEach((doc) => {
-    const data = doc.data() as any
-    items.push({
-      id: doc.id,
-      title: data.title,
-      start: data.start,
-      end: data.end,
-      source: data.source,
-      status: data.status,
-      description: data.description,
-      location: data.location,
-    })
-  })
-
-  return items.sort((a, b) => a.start.localeCompare(b.start))
+export const listEvents = async (propertyId: string): Promise<PersistedEvent[]> => {
+  const snapshot = await eventsCollection(propertyId).orderBy('start').get()
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<PersistedEvent, 'id'>) }))
 }
 
-/** Crea un evento manual (confirmed por defecto). Nunca guarda undefined. */
-export async function createManualEvent(
-  propertyId: string,
-  data: {
-    title: string
-    start: string
-    end: string
-    description?: string
-    location?: string
-  },
-): Promise<PersistedEvent> {
-  const col = collectionForProperty(propertyId)
-  const docRef = col.doc()
-
-  const toSave = omitUndefined({
-    title: data.title,
-    start: data.start,
-    end: data.end,
-    source: 'manual' as const,
-    status: 'confirmed' as const,
-    description: data.description,
-    location: data.location,
-  })
-
-  await docRef.set(toSave)
-
-  return {
-    id: docRef.id,
-    ...(toSave as Omit<PersistedEvent, 'id'>),
-  }
-}
-
-/** Elimina un evento por id. */
-export async function deleteEvent(propertyId: string, eventId: string): Promise<void> {
-  const col = collectionForProperty(propertyId)
-  await col.doc(eventId).delete()
-}
-
-/**
- * Reemplaza los eventos de Airbnb:
- * - Borra todos los que tengan source=airbnb
- * - Inserta los nuevos (confirmed y, opcionalmente, tentative)
- * Nunca guarda undefined.
- */
-export async function replaceAirbnbEvents(
-  propertyId: string,
-  confirmed: Array<{
-    id?: string
-    title: string
-    start: string
-    end: string
-    description?: string
-    location?: string
-    status?: 'confirmed'
-  }>,
-  tentative: Array<{
-    id?: string
-    title: string
-    start: string
-    end: string
-    description?: string
-    location?: string
-    status?: 'tentative'
-  }> = [],
-): Promise<void> {
-  const col = collectionForProperty(propertyId)
-
-  // 1) Borrar los anteriores de source=airbnb
-  const prev = await col.where('source', '==', 'airbnb').get()
-  const batch = db.batch()
-  prev.forEach((doc) => batch.delete(doc.ref))
-
-  // 2) Insertar nuevos (confirmed + tentative)
+export const createManualEvent = async (propertyId: string, input: CreateEventInput) => {
   const now = new Date().toISOString()
-
-  const upsert = (e: any, status: 'confirmed' | 'tentative') => {
-    const ref = col.doc(e.id ?? undefined) // si trae id, úsalo; si no, auto-ID
-    const payload = omitUndefined({
-      title: e.title,
-      start: e.start,
-      end: e.end,
-      source: 'airbnb' as const,
-      status,
-      description: e.description,
-      location: e.location,
-      syncedAt: now,
-    })
-    batch.set(ref, payload, { merge: false })
+  const payload: Omit<PersistedEvent, 'id'> = {
+    title: input.title,
+    start: input.start,
+    end: input.end,
+    source: 'manual',
+    status: 'confirmed',
+    createdAt: now,
+    updatedAt: now,
+    description: input.description,
+    location: input.location,
   }
 
-  confirmed.forEach((e) => upsert(e, 'confirmed'))
-  tentative.forEach((e) => upsert(e, 'tentative'))
+  const docRef = await eventsCollection(propertyId).add(payload)
+  return { id: docRef.id, ...payload }
+}
+
+export const deleteEvent = async (propertyId: string, eventId: string) => {
+  await eventsCollection(propertyId).doc(eventId).delete()
+}
+
+export const replaceAirbnbEvents = async (
+  propertyId: string,
+  confirmed: AirbnbCalendarEvent[],
+  tentative: AirbnbCalendarEvent[],
+) => {
+  const collectionRef = eventsCollection(propertyId)
+  const batch = firestore.batch()
+
+  const existing = await collectionRef.where('source', '==', 'airbnb').get()
+  existing.docs.forEach((doc) => batch.delete(doc.ref))
+
+  const now = new Date().toISOString()
+  ;[...confirmed, ...tentative].forEach((event) => {
+    const docRef = collectionRef.doc()
+    batch.set(docRef, {
+      title: event.summary,
+      start: event.start.toISOString(),
+      end: event.end.toISOString(),
+      source: 'airbnb',
+      status: event.status,
+      createdAt: now,
+      updatedAt: now,
+      externalId: event.uid,
+      description: event.description,
+      location: event.location,
+    })
+  })
 
   await batch.commit()
 }
