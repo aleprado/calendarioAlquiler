@@ -10,7 +10,7 @@ import {
   listEvents,
   replaceAirbnbEvents,
 } from './firestore'
-import type { SyncResponse } from './types'
+import type { SyncResponse, AirbnbCalendarEvent } from './types'
 
 const app = express()
 app.use(express.json())
@@ -71,10 +71,21 @@ app.post(
 
     try {
       const propertyId = getPropertyId(req)
-      // ✅ Limpiar payload antes de guardar
-      const cleanData = Object.fromEntries(
-        Object.entries(parseResult.data).filter(([_, v]) => v != null),
-      ) as z.infer<typeof eventPayloadSchema>
+      // ✅ Armar payload solo con campos necesarios (sin undefined / null)
+      const { title, start, end, description, location } = parseResult.data
+      const cleanData: {
+        title: string
+        start: string
+        end: string
+        description?: string
+        location?: string
+      } = {
+        title,
+        start,
+        end,
+        ...(description != null ? { description } : {}),
+        ...(location != null ? { location } : {}),
+      }
 
       const event = await createManualEvent(propertyId, cleanData)
       res.status(201).json({ event })
@@ -102,6 +113,20 @@ app.delete(
     res.status(204).send()
   }),
 )
+
+// Helper tipado: sanitiza un AirbnbCalendarEvent sin romper el tipo
+const sanitizeAirbnbEvent = (e: AirbnbCalendarEvent): AirbnbCalendarEvent => {
+  const base: AirbnbCalendarEvent = {
+    uid: e.uid,
+    summary: e.summary,
+    start: e.start,
+    end: e.end,
+    status: e.status,
+  }
+  if (e.description != null) base.description = e.description
+  if (e.location != null) base.location = e.location
+  return base
+}
 
 // 🔹 Sincronizar con Airbnb (ICal)
 app.post(
@@ -131,14 +156,11 @@ app.post(
       const icsRaw = await downloadIcs(icalUrl)
       const { confirmed, tentative } = parseAirbnbIcs(icsRaw, includeTentative)
 
-      // ✅ Filtramos todos los campos undefined o nulos antes de guardar
-      const clean = (events: any[]) =>
-        events.map((ev) =>
-          Object.fromEntries(Object.entries(ev).filter(([_, v]) => v != null)),
-        )
-
-      const cleanConfirmed = clean(confirmed)
-      const cleanTentative = includeTentative ? clean(tentative) : []
+      // ✅ Sanitizar manteniendo el tipo AirbnbCalendarEvent
+      const cleanConfirmed: AirbnbCalendarEvent[] = confirmed.map(sanitizeAirbnbEvent)
+      const cleanTentative: AirbnbCalendarEvent[] = includeTentative
+        ? tentative.map(sanitizeAirbnbEvent)
+        : []
 
       await replaceAirbnbEvents(propertyId, cleanConfirmed, cleanTentative)
 
