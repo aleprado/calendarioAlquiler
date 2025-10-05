@@ -87,7 +87,7 @@ export const MultiMonthCalendar = ({
               popup
               view={Views.MONTH}
               date={date}
-              style={{ height: 320 }}
+              style={{ height: '100%' }}
               onSelectSlot={onSelectSlot}
               onSelectEvent={onSelectEvent}
               longPressThreshold={250}
