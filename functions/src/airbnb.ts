@@ -102,7 +102,7 @@ export const parseAirbnbIcs = (icsRaw: string, includeTentative = false) => {
 
     const event: AirbnbCalendarEvent = {
       uid: normalizeText(component.uid) ?? uid,
-      summary: normalizeText(component.summary) ?? 'Reserva Airbnb',
+      summary: 'Reservado o bloqueado desde Airbnb',
       description: normalizeText(component.description),
       start,
       end: ensureExclusiveEnd(start, end),

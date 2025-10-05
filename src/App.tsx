@@ -175,7 +175,7 @@ function App() {
   )
 
   const eventColors = useMemo(() => {
-    const palette = ['#2563eb', '#0ea5e9', '#14b8a6', '#f97316', '#a855f7', '#2569eb', '#0ee91dff', '#87b814ff', '#fc5c4eff', '#f8f8f8ff', '#9b9ddaff']
+    const palette = ['#2563eb', '#0ea5e9', '#14b8a6', '#f97316', '#a855f7', '#2569eb', '#0ee91dff', '#87b814ff', '#fc5c4eff', '#141414ff', '#9b9ddaff']
     const sortedEvents = [...events].sort((a, b) => a.start.getTime() - b.start.getTime())
     const colorMap = new Map<string, string>()
 

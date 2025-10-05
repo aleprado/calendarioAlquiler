@@ -91,7 +91,14 @@ export const MultiMonthCalendar = ({
               onSelectSlot={onSelectSlot}
               onSelectEvent={onSelectEvent}
               longPressThreshold={250}
-              components={{ toolbar }}
+              components={{
+                toolbar,
+                event: ({ event, title, continuesPrior }) => (
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {!continuesPrior && (event.title ?? title)}
+                  </div>
+                ),
+              }}
               culture="es"
               eventPropGetter={eventPropGetter}
             />
