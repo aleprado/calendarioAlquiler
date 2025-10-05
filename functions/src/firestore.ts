@@ -1,7 +1,9 @@
 import { Firestore } from '@google-cloud/firestore'
 import type { AirbnbCalendarEvent } from './types'
 
-const firestore = new Firestore()
+const firestore = new Firestore({
+  ignoreUndefinedProperties: true,   // ← evita el error por 'undefined'
+})
 
 export interface PersistedEvent {
   id: string
