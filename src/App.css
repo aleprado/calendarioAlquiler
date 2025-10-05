@@ -207,7 +207,9 @@
   display: grid;
   gap: 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  grid-auto-rows: 1fr;
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(500px, 1fr);
 }
 
 .multi-month-calendar__cell {
