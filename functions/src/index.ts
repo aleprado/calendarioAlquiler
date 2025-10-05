@@ -154,7 +154,7 @@ app.post(
 
 // Handler de errores con 4 argumentos para que Express lo reconozca
 app.use(
-  (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  (error: unknown, _req: Request, res: Response) => {
     console.error('[calendarApi][unhandled]', error)
     res.status(500).json({ message: 'Error inesperado en la API.' })
   },
