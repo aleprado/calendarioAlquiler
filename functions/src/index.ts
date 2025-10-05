@@ -15,12 +15,14 @@ import type { SyncResponse } from './types'
 const app = express()
 app.use(express.json())
 
+// Wrapper para manejo de errores async
 const asyncHandler =
   (handler: (req: Request, res: Response) => void | Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(handler(req, res)).catch(next)
   }
 
+// Schemas de validación
 const eventPayloadSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
   start: z.string().datetime(),
@@ -29,7 +31,7 @@ const eventPayloadSchema = z.object({
   location: z.string().optional(),
 })
 
-// icalUrl ahora es opcional; si no viene, se toma de env/config
+// icalUrl opcional; si no viene en el body, se toma de env/config
 const syncPayloadSchema = z.object({
   icalUrl: z.string().url('icalUrl debe ser una URL válida').optional(),
   includeTentative: z.boolean().optional(),
@@ -39,14 +41,13 @@ const getPropertyId = (req: Request) =>
   req.params.propertyId ?? config.defaultPropertyId
 
 app.get('/health', (_req, res) => {
-  res
-    .status(200)
-    .json({ status: 'ok', service: 'airbnb-calendar-functions' })
+  res.status(200).json({ status: 'ok', service: 'airbnb-calendar-functions' })
 })
 
 // Todas las rutas siguientes requieren Basic Auth
 app.use(basicAuthMiddleware)
 
+// 🔹 Obtener eventos
 app.get(
   '/properties/:propertyId/events',
   asyncHandler(async (req, res) => {
@@ -56,6 +57,7 @@ app.get(
   }),
 )
 
+// 🔹 Crear evento manual
 app.post(
   '/properties/:propertyId/events',
   asyncHandler(async (req, res) => {
@@ -69,7 +71,12 @@ app.post(
 
     try {
       const propertyId = getPropertyId(req)
-      const event = await createManualEvent(propertyId, parseResult.data)
+      // ✅ Limpiar payload antes de guardar
+      const cleanData = Object.fromEntries(
+        Object.entries(parseResult.data).filter(([_, v]) => v != null),
+      ) as z.infer<typeof eventPayloadSchema>
+
+      const event = await createManualEvent(propertyId, cleanData)
       res.status(201).json({ event })
     } catch (error) {
       console.error('[createManualEvent]', error)
@@ -78,6 +85,7 @@ app.post(
   }),
 )
 
+// 🔹 Eliminar evento
 app.delete(
   '/properties/:propertyId/events/:eventId',
   asyncHandler(async (req, res) => {
@@ -95,6 +103,7 @@ app.delete(
   }),
 )
 
+// 🔹 Sincronizar con Airbnb (ICal)
 app.post(
   '/properties/:propertyId/airbnb/sync',
   asyncHandler(async (req, res) => {
@@ -109,12 +118,8 @@ app.post(
 
     try {
       const { icalUrl: providedUrl, includeTentative = false } = parseResult.data
-      // Fallback a env/config si no vino en el body
       const icalUrl =
-        providedUrl ??
-        process.env.AIRBNB_ICAL_URL ??
-        config.airbnbIcalUrl ??
-        ''
+        providedUrl ?? process.env.AIRBNB_ICAL_URL ?? config.airbnbIcalUrl ?? ''
 
       if (!icalUrl) {
         res
@@ -126,18 +131,23 @@ app.post(
       const icsRaw = await downloadIcs(icalUrl)
       const { confirmed, tentative } = parseAirbnbIcs(icsRaw, includeTentative)
 
-      await replaceAirbnbEvents(
-        propertyId,
-        confirmed,
-        includeTentative ? tentative : [],
-      )
+      // ✅ Filtramos todos los campos undefined o nulos antes de guardar
+      const clean = (events: any[]) =>
+        events.map((ev) =>
+          Object.fromEntries(Object.entries(ev).filter(([_, v]) => v != null)),
+        )
+
+      const cleanConfirmed = clean(confirmed)
+      const cleanTentative = includeTentative ? clean(tentative) : []
+
+      await replaceAirbnbEvents(propertyId, cleanConfirmed, cleanTentative)
 
       const payload: SyncResponse = {
         propertyId,
         fetchedAt: new Date().toISOString(),
-        totalEvents: confirmed.length + (includeTentative ? tentative.length : 0),
-        confirmedEvents: confirmed,
-        tentativeEvents: includeTentative ? tentative : [],
+        totalEvents: cleanConfirmed.length + cleanTentative.length,
+        confirmedEvents: cleanConfirmed,
+        tentativeEvents: cleanTentative,
       }
 
       res.status(200).json(payload)
@@ -152,13 +162,11 @@ app.post(
   }),
 )
 
-// Handler de errores con 4 argumentos para que Express lo reconozca
-app.use(
-  (error: unknown, _req: Request, res: Response) => {
-    console.error('[calendarApi][unhandled]', error)
-    res.status(500).json({ message: 'Error inesperado en la API.' })
-  },
-)
+// 🔹 Handler global de errores
+app.use((error: unknown, _req: Request, res: Response) => {
+  console.error('[calendarApi][unhandled]', error)
+  res.status(500).json({ message: 'Error inesperado en la API.' })
+})
 
 export const calendarApi = (req: Request, res: Response) => {
   app(req, res)
