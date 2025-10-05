@@ -1,130 +1,104 @@
-import axios from 'axios'
-import ical, { CalendarComponent, ParamList } from 'ical'
-import { addMilliseconds } from 'date-fns'
-import { AirbnbCalendarEvent } from './types'
+/**
+ * Utilidades para obtener y parsear el iCal de Airbnb.
+ * Cambios clave:
+ *  - Nunca retornamos campos con `undefined` (solo agregamos si existen)
+ *  - Estructura compatible con replaceAirbnbEvents()
+ */
 
-const USER_AGENT = 'CalendarioAlquilerBot/1.0 (contact: soporte@calendarioalquiler.com)'
-const REQUEST_TIMEOUT_MS = 15000
-
-const normalizeStatus = (rawStatus?: string): AirbnbCalendarEvent['status'] => {
-  const status = (rawStatus ?? '').toLowerCase()
-
-  switch (status) {
-    case 'cancelled':
-    case 'canceled':
-      return 'cancelled'
-    case 'tentative':
-      return 'tentative'
-    default:
-      return 'confirmed'
-  }
+type ParsedEvent = {
+  id?: string
+  title: string
+  start: string
+  end: string
+  description?: string
+  location?: string
+  status?: 'confirmed' | 'tentative'
 }
 
-const isParamList = (value: unknown): value is ParamList =>
-  typeof value === 'object' && value !== null && 'val' in (value as Record<string, unknown>)
-
-const hasToJsDate = (value: unknown): value is { toJSDate: () => Date } =>
-  typeof value === 'object' && value !== null && 'toJSDate' in (value as Record<string, unknown>)
-
-const normalizeDate = (dateLike: CalendarComponent['start']) => {
-  if (!dateLike) {
-    return null
+export async function downloadIcs(url: string): Promise<string> {
+  // En Node 18+ `fetch` está disponible nativamente en Cloud Functions Gen2
+  const resp = await fetch(url)
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '')
+    throw new Error(`iCal fetch error: ${resp.status} ${txt}`)
   }
-
-  const value: unknown = dateLike
-
-  if (value instanceof Date) {
-    return value
-  }
-
-  if (hasToJsDate(value)) {
-    return value.toJSDate()
-  }
-
-  if (isParamList(value)) {
-    const parsed = new Date(value.val)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
-  }
-
-  if (typeof value === 'string') {
-    const parsed = new Date(value)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
-  }
-
-  return null
+  return await resp.text()
 }
 
-const ensureExclusiveEnd = (start: Date, end: Date) => {
-  if (end > start) {
-    return end
+/**
+ * Parser minimalista de .ics:
+ * - Separa por "BEGIN:VEVENT" ... "END:VEVENT"
+ * - Extrae SUMMARY/DTSTART/DTEND/LOCATION/DESCRIPTION/STATUS/UID
+ * - Devuelve dos listas: confirmed y (opcionalmente) tentative
+ */
+export function parseAirbnbIcs(
+  icsRaw: string,
+  includeTentative: boolean,
+): { confirmed: ParsedEvent[]; tentative: ParsedEvent[] } {
+  const blocks = icsRaw.split(/BEGIN:VEVENT\r?\n/).slice(1) // ignora cabecera
+  const confirmed: ParsedEvent[] = []
+  const tentative: ParsedEvent[] = []
+
+  const rx = {
+    uid: /^UID:(.+)$/m,
+    summary: /^SUMMARY:(.+)$/m,
+    dtStart: /^DTSTART(?:;[^:]+)?:([0-9TZ]+)$/m,
+    dtEnd: /^DTEND(?:;[^:]+)?:([0-9TZ]+)$/m,
+    location: /^LOCATION:(.+)$/m,
+    description: /^DESCRIPTION:(.+)$/m,
+    status: /^STATUS:(.+)$/m,
   }
 
-  // Airbnb ICS feeds occasionally omit end times for all-day events; assume 1 day duration
-  return addMilliseconds(start, 24 * 60 * 60 * 1000)
-}
+  for (const raw of blocks) {
+    const block = raw.split(/END:VEVENT/)[0]
 
-export const downloadIcs = async (icalUrl: string): Promise<string> => {
-  const response = await axios.get<string>(icalUrl, {
-    responseType: 'text',
-    timeout: REQUEST_TIMEOUT_MS,
-    headers: {
-      'User-Agent': USER_AGENT,
-      Accept: 'text/calendar, text/plain;q=0.8, */*;q=0.5',
-    },
-  })
+    const uid = (block.match(rx.uid)?.[1] ?? '').trim()
+    const summary = (block.match(rx.summary)?.[1] ?? '').trim()
+    const dtStart = (block.match(rx.dtStart)?.[1] ?? '').trim()
+    const dtEnd = (block.match(rx.dtEnd)?.[1] ?? '').trim()
+    const location = (block.match(rx.location)?.[1] ?? '').trim()
+    const description = (block.match(rx.description)?.[1] ?? '').trim()
+    const statusRaw = (block.match(rx.status)?.[1] ?? '').trim().toUpperCase()
 
-  return response.data
-}
-
-const normalizeText = (value: string | ParamList | undefined) => {
-  if (!value) return undefined
-  if (typeof value === 'string') return value
-  return value.val
-}
-
-export const parseAirbnbIcs = (icsRaw: string, includeTentative = false) => {
-  const parsed = ical.parseICS(icsRaw)
-
-  const confirmed: AirbnbCalendarEvent[] = []
-  const tentative: AirbnbCalendarEvent[] = []
-
-  Object.entries(parsed).forEach(([uid, component]) => {
-    if (!component || component.type !== 'VEVENT') {
-      return
+    // Fechas en ISO (asumiendo UTC si terminan con Z o formato yyyymmdd)
+    const toIso = (s: string): string => {
+      if (!s) return ''
+      // Ej: 20251010T120000Z o 20251010T120000
+      if (/^\d{8}T\d{6}Z?$/.test(s)) {
+        const iso = s.endsWith('Z')
+          ? s.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')
+          : s.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3T$4:$5:$6')
+        return iso.endsWith('Z') ? iso : `${iso}Z`
+      }
+      // Ej: 20251010 (all-day)
+      if (/^\d{8}$/.test(s)) {
+        return s.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3T00:00:00Z')
+      }
+      return s // fallback
     }
 
-    const start = normalizeDate(component.start)
-    const end = normalizeDate(component.end)
+    const startIso = toIso(dtStart)
+    const endIso = toIso(dtEnd)
 
-    if (!start || !end) {
-      return
+    if (!summary || !startIso || !endIso) continue
+
+    // Construye el evento sin undefined: solo agrega si hay valor
+    const ev: ParsedEvent = {
+      title: summary,
+      start: startIso,
+      end: endIso,
+      status: statusRaw === 'TENTATIVE' ? 'tentative' : 'confirmed',
     }
+    if (uid) ev.id = uid
+    if (description) ev.description = description
+    if (location) ev.location = location
 
-    const event: AirbnbCalendarEvent = {
-      uid: normalizeText(component.uid) ?? uid,
-      summary: normalizeText(component.summary) ?? 'Reserva Airbnb',
-      description: normalizeText(component.description),
-      start,
-      end: ensureExclusiveEnd(start, end),
-      status: normalizeStatus(normalizeText(component.status)),
-      lastModified: normalizeDate(component.lastmodified) ?? undefined,
-      location: normalizeText(component.location),
+    if (ev.status === 'tentative') {
+      if (includeTentative) tentative.push(ev)
+    } else {
+      confirmed.push(ev)
     }
-
-    if (event.status === 'tentative') {
-      tentative.push(event)
-      return
-    }
-
-    if (event.status === 'cancelled') {
-      return
-    }
-
-    confirmed.push(event)
-  })
-
-  return {
-    confirmed,
-    tentative: includeTentative ? tentative : [],
   }
+
+  return { confirmed, tentative }
 }
