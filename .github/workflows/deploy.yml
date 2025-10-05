@@ -55,7 +55,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --service-account="airbnb-calendar-functions@${PROJECT_ID}.iam.gserviceaccount.com" \
-            --set-env-vars=AIRBNB_ICAL_URL=${AIRBNB_ICAL_URL},NODE_ENV=production,BASIC_AUTH_USER=${BASIC_USER},BASIC_AUTH_PASSWORD=${BASIC_PASS},DEFAULT_PROPERTY_ID=${DEFAULT_PROPERTY_ID},ALLOW_UNAUTHENTICATED=true
+            --set-env-vars="AIRBNB_ICAL_URL=${AIRBNB_ICAL_URL},NODE_ENV=production,BASIC_AUTH_USER=${BASIC_USER},BASIC_AUTH_PASSWORD=${BASIC_PASS},DEFAULT_PROPERTY_ID=${DEFAULT_PROPERTY_ID},ALLOW_UNAUTHENTICATED=true"
 
       - name: Get Function URL
         id: fn_url
