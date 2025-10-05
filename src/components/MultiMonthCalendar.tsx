@@ -16,7 +16,7 @@ type MultiMonthCalendarProps = {
   eventPropGetter?: CalendarEventPropGetter
 }
 
-const VISIBLE_MONTHS = 4
+const VISIBLE_MONTHS = 3
 
 const toolbar: Components<CalendarEvent>['toolbar'] = () => null
 
