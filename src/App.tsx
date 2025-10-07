@@ -48,7 +48,8 @@ function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
       airbnbHidden.add(a.id);
       // marcamos los manuales correspondientes para badge visual
       manuals.forEach((m) => {
-        (m as ViewEvent).duplicateWithAirbnb = true;
+        const mView = m as ViewEvent;
+        mView.duplicateWithAirbnb = true;
       });
     }
   });
