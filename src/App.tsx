@@ -55,7 +55,7 @@ function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
 
   // Preferimos mostrar SOLO manuales cuando hay duplicado (Airbnb oculto)
   all.forEach((e) => {
-    if (isAirbnb(e) && airbnbHidden.has(e.id)) return; // oculto
+    //if (isAirbnb(e) && airbnbHidden.has(e.id)) return; // oculto
     visible.push(e as ViewEvent);
   });
 
@@ -255,7 +255,7 @@ function App() {
   const eventPropGetter = useCallback<CalendarEventPropGetter>(
     (event) => {
       const color = eventColors.colorMap.get(event.id) ?? eventColors.palette[0]
-      const isLinked = (event as any).duplicateWithAirbnb === true
+      const isLinked = (event as ViewEvent).duplicateWithAirbnb === true
       return {
         style: {
           backgroundColor: color,
