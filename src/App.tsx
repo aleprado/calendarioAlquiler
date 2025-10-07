@@ -9,6 +9,60 @@ import type { CalendarEvent, CalendarEventDTO } from './types'
 import './App.css'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
+
+// --- Dedupe helpers ---
+const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const isoDay = (d: Date) => day(d).toISOString().slice(0, 10);
+
+// Normaliza rangos a día (pensado para bloqueos all-day)
+const rangeKey = (ev: CalendarEvent) => `${isoDay(ev.start)}_${isoDay(ev.end)}`;
+
+const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb';
+const isManual = (e: CalendarEvent) => e.source === 'manual';
+
+// Airbnb “no es reserved”: podés ajustar la heurística si tus títulos varían
+const isAirbnbReserved = (e: CalendarEvent) =>
+  isAirbnb(e) && /reserved/i.test(e.title);
+
+type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean };
+
+function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
+  // Indexar manuales por rango
+  const manualByKey = new Map<string, CalendarEvent[]>();
+  all.filter(isManual).forEach((e) => {
+    const k = rangeKey(e);
+    const arr = manualByKey.get(k) ?? [];
+    arr.push(e);
+    manualByKey.set(k, arr);
+  });
+
+  const visible: ViewEvent[] = [];
+  const airbnbHidden = new Set<string>(); // ids de Airbnb ocultos por duplicado
+
+  // Marcar duplicados: si existe manual con el mismo rango y el Airbnb NO es "reserved"
+  all.filter(isAirbnb).forEach((a) => {
+    if (isAirbnbReserved(a)) return;
+    const k = rangeKey(a);
+    const manuals = manualByKey.get(k);
+    if (manuals && manuals.length > 0) {
+      airbnbHidden.add(a.id);
+      // marcamos los manuales correspondientes para badge visual
+      manuals.forEach((m) => {
+        (m as ViewEvent).duplicateWithAirbnb = true;
+      });
+    }
+  });
+
+  // Preferimos mostrar SOLO manuales cuando hay duplicado (Airbnb oculto)
+  all.forEach((e) => {
+    if (isAirbnb(e) && airbnbHidden.has(e.id)) return; // oculto
+    visible.push(e as ViewEvent);
+  });
+
+  return visible;
+}
+
+
 const toCalendarEvent = (event: CalendarEventDTO): CalendarEvent => ({
   id: event.id,
   title: event.title,
@@ -39,6 +93,7 @@ const calendarMessages = {
 
 function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const visibleEvents = useMemo(() => computeVisibleEvents(events), [events])
   const [isLoading, setIsLoading] = useState(true)
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [pendingRange, setPendingRange] = useState<{
@@ -200,11 +255,14 @@ function App() {
   const eventPropGetter = useCallback<CalendarEventPropGetter>(
     (event) => {
       const color = eventColors.colorMap.get(event.id) ?? eventColors.palette[0]
+      const isLinked = (event as any).duplicateWithAirbnb === true
       return {
         style: {
           backgroundColor: color,
           borderColor: color,
           color: '#ffffff',
+          outline: isLinked ? '2px dashed rgba(0,0,0,0.35)' : undefined,
+          boxShadow: isLinked ? 'inset 0 0 0 2px rgba(255,255,255,0.6)' : undefined,
         },
       }
     },
@@ -215,7 +273,7 @@ function App() {
     <div className="app-layout">
       <header className="app-header">
         <div>
-          <h1>Calendario de Alquileres</h1>
+          <h1>Simple Alquiler</h1>
           <p className="subtitle">Selecciona un rango de fechas en el calendario para crear un evento.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -243,7 +301,7 @@ function App() {
             <div className="loading">Cargando eventos...</div>
           ) : (
             <MultiMonthCalendar
-              events={events}
+              events={visibleEvents}
               messages={calendarMessages}
               onSelectSlot={handleSelectSlot}
               onSelectEvent={handleRemoveEvent}
