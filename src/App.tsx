@@ -37,7 +37,7 @@ function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
 
   // marca manuales que se solapan con cualquier bloqueo/airbnb (no reserved)
   for (const m of manuals) {
-    const linked = airbnbs.some((a) => !isAirbnbReserved(a) && rangesOverlap(m, a))
+    const linked = airbnbs.some((a) => (isAirbnbBlocked(a) || !isAirbnbReserved(a)) && rangesOverlap(m, a))
     if (linked) (m as ViewEvent).duplicateWithAirbnb = true
   }
 
