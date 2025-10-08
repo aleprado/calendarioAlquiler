@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { SlotInfo } from 'react-big-calendar'
+import type { SlotInfo, EventProps } from 'react-big-calendar'
 
 import { createEvent, deleteEvent, fetchEvents } from './api/events'
 import { EventFormModal } from './components/EventFormModal'
@@ -9,60 +9,58 @@ import type { CalendarEvent, CalendarEventDTO } from './types'
 import './App.css'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
-
 // --- Dedupe helpers ---
-const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const isoDay = (d: Date) => day(d).toISOString().slice(0, 10);
+const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+const isoDay = (d: Date) => day(d).toISOString().slice(0, 10)
 
 // Normaliza rangos a día (pensado para bloqueos all-day)
-const rangeKey = (ev: CalendarEvent) => `${isoDay(ev.start)}_${isoDay(ev.end)}`;
+const rangeKey = (ev: CalendarEvent) => `${isoDay(ev.start)}_${isoDay(ev.end)}`
 
-const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb';
-const isManual = (e: CalendarEvent) => e.source === 'manual';
+const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb'
+const isManual = (e: CalendarEvent) => e.source === 'manual'
 
 // Airbnb “no es reserved”: podés ajustar la heurística si tus títulos varían
-const isAirbnbReserved = (e: CalendarEvent) =>
-  isAirbnb(e) && /reserved/i.test(e.title);
+const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && /reserved/i.test(e.title)
 
-type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean };
+type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
 function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
   // Indexar manuales por rango
-  const manualByKey = new Map<string, CalendarEvent[]>();
+  const manualByKey = new Map<string, CalendarEvent[]>()
   all.filter(isManual).forEach((e) => {
-    const k = rangeKey(e);
-    const arr = manualByKey.get(k) ?? [];
-    arr.push(e);
-    manualByKey.set(k, arr);
-  });
+    const k = rangeKey(e)
+    const arr = manualByKey.get(k) ?? []
+    arr.push(e)
+    manualByKey.set(k, arr)
+  })
 
-  const visible: ViewEvent[] = [];
-  const airbnbHidden = new Set<string>(); // ids de Airbnb ocultos por duplicado
+  const visible: ViewEvent[] = []
+  const airbnbHidden = new Set<string>() // ids de Airbnb ocultos por duplicado
 
   // Marcar duplicados: si existe manual con el mismo rango y el Airbnb NO es "reserved"
   all.filter(isAirbnb).forEach((a) => {
-    if (isAirbnbReserved(a)) return;
-    const k = rangeKey(a);
-    const manuals = manualByKey.get(k);
+    if (isAirbnbReserved(a)) return
+    const k = rangeKey(a)
+    const manuals = manualByKey.get(k)
     if (manuals && manuals.length > 0) {
-      airbnbHidden.add(a.id);
+      airbnbHidden.add(a.id)
       // marcamos los manuales correspondientes para badge visual
       manuals.forEach((m) => {
-        const mView = m as ViewEvent;
-        mView.duplicateWithAirbnb = true;
-      });
+        const mView = m as ViewEvent
+        mView.duplicateWithAirbnb = true
+      })
     }
-  });
+  })
 
   // Preferimos mostrar SOLO manuales cuando hay duplicado (Airbnb oculto)
+  // Si querés ocultar Airbnb duplicados, descomentá la línea dentro del loop.
   all.forEach((e) => {
-    //if (isAirbnb(e) && airbnbHidden.has(e.id)) return; // oculto
-    visible.push(e as ViewEvent);
-  });
+    // if (isAirbnb(e) && airbnbHidden.has(e.id)) return // oculto Airbnb cuando hay manual
+    visible.push(e as ViewEvent)
+  })
 
-  return visible;
+  return visible
 }
-
 
 const toCalendarEvent = (event: CalendarEventDTO): CalendarEvent => ({
   id: event.id,
@@ -90,6 +88,38 @@ const calendarMessages = {
   agenda: 'Agenda',
   showMore: (total: number) => `+${total} más`,
   noEventsInRange: 'No hay eventos en este rango.',
+}
+
+// --- Month view renderer: muestra el texto SOLO en el primer segmento
+const MonthEventRenderer: React.FC<EventProps<ViewEvent>> = ({ event, title, continuesPrior }) => {
+  if (continuesPrior) return <span /> // evita repetir texto en segmentos siguientes
+
+  const isAirbnbSrc = event.source === 'airbnb'
+  const isReserved = isAirbnbSrc && /reserved/i.test(title)
+  const isManualSrc = event.source === 'manual'
+  const isLinked = event.duplicateWithAirbnb === true
+
+  let label: React.ReactNode
+  if (isAirbnbSrc && isReserved) {
+    label = <strong>Reservado en Airbnb</strong>
+  } else if (isManualSrc && isLinked) {
+    label = (
+      <>
+        <strong>{title}</strong> — <span className="status-badge">Bloqueado en Airbnb</span>
+      </>
+    )
+  } else if (isManualSrc && !isLinked) {
+    label = (
+      <>
+        <strong>{title}</strong> — <span className="status-badge status--warning">No bloqueado en Airbnb</span>
+      </>
+    )
+  } else {
+    // Fallback (p. ej. bloqueos Airbnb que no son "reserved")
+    label = <strong>{title}</strong>
+  }
+
+  return <div className="month-event-line">{label}</div>
 }
 
 function App() {
@@ -150,7 +180,7 @@ function App() {
   }, [propertyId, loadEvents])
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       await loadEvents()
       // Si no hay nada en Firestore, intentamos poblar desde Airbnb automáticamente
       if (!globalError && events.length === 0) {
@@ -231,15 +261,26 @@ function App() {
   )
 
   const eventColors = useMemo(() => {
-    const palette = ['#2563eb', '#0ea5e9', '#14b8a6', '#f97316', '#a855f7', '#2569eb', '#0ee91dff', '#87b814ff', '#fc5c4eff', '#141414ff', '#9b9ddaff']
+    const palette = [
+      '#2563eb',
+      '#0ea5e9',
+      '#14b8a6',
+      '#f97316',
+      '#a855f7',
+      '#2569eb',
+      '#0ee91dff',
+      '#87b814ff',
+      '#fc5c4eff',
+      '#141414ff',
+      '#9b9ddaff',
+    ]
     const sortedEvents = [...events].sort((a, b) => a.start.getTime() - b.start.getTime())
     const colorMap = new Map<string, string>()
 
     let lastColorIndex = -1
 
     sortedEvents.forEach((event) => {
-      const baseIndex =
-        event.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % palette.length
+      const baseIndex = event.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % palette.length
       let colorIndex = baseIndex
 
       if (palette.length > 1 && colorIndex === lastColorIndex) {
@@ -307,6 +348,7 @@ function App() {
               onSelectSlot={handleSelectSlot}
               onSelectEvent={handleRemoveEvent}
               eventPropGetter={eventPropGetter}
+              renderMonthEvent={MonthEventRenderer}
             />
           )}
         </section>

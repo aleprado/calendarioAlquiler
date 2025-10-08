@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { addMonths, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Calendar, Views, type CalendarProps, type Components, type SlotInfo } from 'react-big-calendar'
+import { Calendar, Views, type CalendarProps, type Components, type SlotInfo, type EventProps } from 'react-big-calendar'
 import type { CalendarEvent } from '../types'
 import { localizer } from '../lib/dateLocalizer'
 
@@ -14,6 +14,7 @@ type MultiMonthCalendarProps = {
   onSelectSlot: (slot: SlotInfo) => void
   onSelectEvent: (event: CalendarEvent) => void
   eventPropGetter?: CalendarEventPropGetter
+  renderMonthEvent?: React.ComponentType<EventProps<CalendarEvent>>
 }
 
 const VISIBLE_MONTHS = 2
@@ -33,6 +34,7 @@ export const MultiMonthCalendar = ({
   onSelectSlot,
   onSelectEvent,
   eventPropGetter,
+  renderMonthEvent,
 }: MultiMonthCalendarProps) => {
   const [visibleStart, setVisibleStart] = useState(() => startOfMonth(new Date()))
 
@@ -93,11 +95,7 @@ export const MultiMonthCalendar = ({
               longPressThreshold={250}
               components={{
                 toolbar,
-                event: ({ event, title, continuesPrior }) => (
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {!continuesPrior && (event.title ?? title)}
-                  </div>
-                ),
+                month: { event: renderMonthEvent },
               }}
               culture="es"
               eventPropGetter={eventPropGetter}
