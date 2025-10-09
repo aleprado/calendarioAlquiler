@@ -319,3 +319,14 @@
   background: rgba(239, 68, 68, 0.18);  /* rojo suave */
   color: #991b1b;                        /* rojo oscuro */
 }
+
+.copy-hint {
+  min-width: 100px;
+  text-align: left;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.copy-hint--ok {
+  color: #16a34a; /* verde */
+  font-weight: 600;
+}

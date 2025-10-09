@@ -27,22 +27,31 @@ const rangesOverlap = (a: CalendarEvent, b: CalendarEvent) => {
 const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb'
 const isManual = (e: CalendarEvent) => e.source === 'manual'
 const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && /reserved/i.test(e.title)
-const isAirbnbBlocked = (e: CalendarEvent) => isAirbnb(e) && /not\s*available/i.test(e.title)
 
 type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
+/** Oculta eventos de Airbnb que se solapan con un manual (no reserved).
+ *  Marca el manual con duplicateWithAirbnb=true para mostrar el badge.
+ */
 function computeVisibleEvents(all: CalendarEvent[]): ViewEvent[] {
   const manuals = all.filter(isManual)
   const airbnbs = all.filter(isAirbnb)
 
-  // marca manuales que se solapan con cualquier bloqueo/airbnb (no reserved)
+  const airbnbHidden = new Set<string>()
+
   for (const m of manuals) {
-    const linked = airbnbs.some((a) => (isAirbnbBlocked(a) || !isAirbnbReserved(a)) && rangesOverlap(m, a))
-    if (linked) (m as ViewEvent).duplicateWithAirbnb = true
+    const linked = airbnbs.some((a) => !isAirbnbReserved(a) && rangesOverlap(m, a))
+    if (linked) {
+      ;(m as ViewEvent).duplicateWithAirbnb = true
+      airbnbs.forEach((a) => {
+        if (!isAirbnbReserved(a) && rangesOverlap(m, a)) airbnbHidden.add(a.id)
+      })
+    }
   }
 
-  // por ahora mostramos ambos (manual + airbnb). Si querés ocultar airbnb duplicados, se puede filtrar aquí.
-  return all as ViewEvent[]
+  return all
+    .filter((e) => !isAirbnb(e) || !airbnbHidden.has(e.id))
+    .map((e) => e as ViewEvent)
 }
 
 /* ---------- Mapeo desde DTO ---------- */
@@ -120,11 +129,30 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const propertyId = useMemo(
     () => (import.meta.env.VITE_PROPERTY_ID as string | undefined) ?? 'default-property',
     [],
   )
+
+  // URL pública (solo lectura) para que un inquilino vea disponibilidad
+  const getPublicAvailabilityUrl = useCallback(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/public/${propertyId}`
+  }, [propertyId])
+
+  const handleCopyPublicUrl = useCallback(async () => {
+    try {
+      const url = getPublicAvailabilityUrl()
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+      alert('No se pudo copiar el link. Copialo manualmente: ' + getPublicAvailabilityUrl())
+    }
+  }, [getPublicAvailabilityUrl])
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true)
@@ -262,13 +290,17 @@ function App() {
           <h1>Simple Alquiler</h1>
           <p className="subtitle">Selecciona un rango de fechas en el calendario para crear un evento.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className="secondary" onClick={loadEvents} disabled={isLoading || isSyncing}>
             {isLoading ? 'Cargando...' : 'Recargar eventos'}
           </button>
           <button type="button" className="secondary" onClick={syncAirbnb} disabled={isSyncing || isLoading}>
             {isSyncing ? 'Sincronizando…' : 'Sincronizar Airbnb'}
           </button>
+          <button type="button" className="secondary" onClick={handleCopyPublicUrl} title="Copiar link de disponibilidad (solo lectura)">
+            Copiar link público
+          </button>
+          <span className={`copy-hint${copied ? ' copy-hint--ok' : ''}`}>{copied ? '¡Link copiado!' : ''}</span>
         </div>
       </header>
 
