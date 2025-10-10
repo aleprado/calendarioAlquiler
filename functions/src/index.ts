@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
 import { authService, type AuthenticatedRequest } from './services/authService'
@@ -7,6 +8,13 @@ import { eventService } from './services/eventService'
 import { ServiceError, isServiceError } from './utils/errors'
 
 const app = express()
+const corsOptions = {
+  origin: true,
+  credentials: true,
+}
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 app.use(express.json())
 
 const asyncHandler =

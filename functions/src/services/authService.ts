@@ -29,6 +29,11 @@ export class AuthService {
   }
 
   middleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (req.method === 'OPTIONS') {
+      next()
+      return
+    }
+
     try {
       const decoded = await this.verifyRequest(req)
       req.user = decoded
