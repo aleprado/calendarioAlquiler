@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAuth } from './auth/AuthProvider'
+import { useAuth } from './auth/useAuth'
 import { LandingPage } from './pages/LandingPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { PublicPropertyPage } from './pages/PublicPropertyPage'
@@ -25,20 +25,20 @@ const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   return children
 }
 
-export const App = () => (
-  <Routes>
-    <Route path="/" element={<LandingPage />} />
-    <Route
-      path="/dashboard"
-      element={
-        <ProtectedRoute>
-          <DashboardPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route path="/public/:publicSlug" element={<PublicPropertyPage />} />
-    <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes>
-)
-
-export default App
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/public/:publicSlug" element={<PublicPropertyPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}

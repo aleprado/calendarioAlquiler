@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth } from '../auth/useAuth'
 import { listProperties, createProperty, updateProperty } from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
