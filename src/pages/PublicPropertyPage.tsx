@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import { MultiMonthCalendar, type CalendarEventPropGetter } from '../components/MultiMonthCalendar'
 import { RequestFormModal } from '../components/RequestFormModal'
 import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
+import { AboutAppModal } from '../components/AboutAppModal'
 import type { CalendarEvent, PublicAvailabilityDTO } from '../types'
 
 const calendarMessages = {
@@ -63,6 +64,7 @@ export const PublicPropertyPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [isAboutOpen, setIsAboutOpen] = useState(false)
 
   const loadAvailability = useCallback(async () => {
     if (!publicSlug) return
@@ -165,6 +167,11 @@ export const PublicPropertyPage = () => {
               eventPropGetter={eventPropGetter}
             />
           </section>
+          <div className="public-footer">
+            <button type="button" className="link-button" onClick={() => setIsAboutOpen(true)}>
+              Gestiona tus alquileres con SimpleAlquiler.net
+            </button>
+          </div>
         </>
       ) : null}
 
@@ -176,6 +183,8 @@ export const PublicPropertyPage = () => {
         isSubmitting={isSubmitting}
         errorMessage={modalError}
       />
+
+      <AboutAppModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </div>
   )
 }
