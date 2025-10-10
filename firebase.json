@@ -9,7 +9,6 @@
     "rewrites": [
       { "source": "/health", "function": { "functionId": "calendar-api", "region": "us-central1" } },
       { "source": "/properties/**", "function": { "functionId": "calendar-api", "region": "us-central1" } },
-      { "source": "/public/**", "function": { "functionId": "calendar-api", "region": "us-central1" } },
       { "source": "**", "destination": "/index.html" }
     ]
   }
