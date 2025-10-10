@@ -21,18 +21,18 @@ const rangesOverlap = (a: CalendarEvent, b: CalendarEvent) => {
 }
 
 const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb'
-const isManual = (e: CalendarEvent) => e.source === 'manual'
+const behavesAsManual = (e: CalendarEvent) => e.source === 'manual' || (e.source === 'public' && e.status === 'confirmed')
 const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && e.status === 'confirmed'
 
 type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
 const computeVisibleEvents = (all: CalendarEvent[]): ViewEvent[] => {
-  const manuals = all.filter((event) => isManual(event) && event.status !== 'declined')
+  const manualLike = all.filter((event) => event.status !== 'declined' && behavesAsManual(event))
   const airbnbs = all.filter(isAirbnb)
 
   const airbnbHidden = new Set<string>()
 
-  manuals.forEach((manual) => {
+  manualLike.forEach((manual) => {
     const overlapsAirbnb = airbnbs.some((airbnb) => isAirbnbReserved(airbnb) && rangesOverlap(manual, airbnb))
     if (overlapsAirbnb) {
       ;(manual as ViewEvent).duplicateWithAirbnb = true
@@ -91,14 +91,13 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior 
     return <div className="month-event-line">{label}</div>
   }
 
-  if (event.source === 'public') {
+  if (event.source === 'public' && !behavesAsManual(event)) {
     if (event.status === 'pending') {
       return <div className="month-event-line"><strong>Solicitud pendiente</strong></div>
     }
     if (event.status === 'declined') {
       return <div className="month-event-line declined">Solicitud declinada</div>
     }
-    return <div className="month-event-line"><strong>Reserva confirmada</strong></div>
   }
 
   const badge = event.duplicateWithAirbnb ? (
@@ -124,7 +123,7 @@ const getEventStyle = (event: ViewEvent) => {
     }
   }
 
-  if (event.source === 'public') {
+  if (event.source === 'public' && !behavesAsManual(event)) {
     if (event.status === 'pending') {
       const color = '#fb923c'
       return { backgroundColor: color, borderColor: color, color: '#ffffff' }
@@ -133,8 +132,6 @@ const getEventStyle = (event: ViewEvent) => {
       const color = '#94a3b8'
       return { backgroundColor: color, borderColor: color, color: '#f3f4f6' }
     }
-    const color = '#10b981'
-    return { backgroundColor: color, borderColor: color, color: '#ffffff' }
   }
 
   const color = '#0ea5e9'
