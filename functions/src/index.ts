@@ -1,28 +1,44 @@
 import express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
-import { basicAuthMiddleware } from './auth'
-import { config } from './config'
-import { downloadIcs, parseAirbnbIcs } from './airbnb'
-import {
-  createManualEvent,
-  deleteEvent,
-  listEvents,
-  replaceAirbnbEvents,
-} from './firestore'
-import type { SyncResponse, AirbnbCalendarEvent } from './types'
+import { authService, type AuthenticatedRequest } from './services/authService'
+import { propertyService } from './services/propertyService'
+import { eventService } from './services/eventService'
+import { ServiceError, isServiceError } from './utils/errors'
 
 const app = express()
 app.use(express.json())
 
-// Wrapper para manejo de errores async
 const asyncHandler =
-  (handler: (req: Request, res: Response) => void | Promise<void>) =>
+  (handler: (req: Request, res: Response, next: NextFunction) => void | Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(handler(req, res)).catch(next)
+    Promise.resolve(handler(req, res, next)).catch(next)
   }
 
-// Schemas de validación
+const getUserId = (req: AuthenticatedRequest) => {
+  if (!req.user) {
+    throw new ServiceError('Autenticación requerida', 401)
+  }
+  return req.user.uid
+}
+
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'calendar-api' })
+})
+
+/* ==================== Rutas autenticadas ==================== */
+
+const propertyPayloadSchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida'),
+})
+
+const propertyUpdateSchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio').optional(),
+  airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida').optional(),
+  regenerateSlug: z.boolean().optional(),
+})
+
 const eventPayloadSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
   start: z.string().datetime(),
@@ -31,161 +47,172 @@ const eventPayloadSchema = z.object({
   location: z.string().optional(),
 })
 
-// icalUrl opcional; si no viene en el body, se toma de env/config
+const eventStatusSchema = z.object({
+  status: z.enum(['pending', 'confirmed', 'declined']),
+})
+
 const syncPayloadSchema = z.object({
   icalUrl: z.string().url('icalUrl debe ser una URL válida').optional(),
   includeTentative: z.boolean().optional(),
 })
 
-const getPropertyId = (req: Request) =>
-  req.params.propertyId ?? config.defaultPropertyId
+const propertyRouter = express.Router()
+propertyRouter.use((req, res, next) => authService.middleware(req as AuthenticatedRequest, res, next))
 
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'airbnb-calendar-functions' })
-})
+propertyRouter.get(
+  '/',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const userId = getUserId(req)
+    const properties = await propertyService.listForUser(userId)
+    res.json({ properties })
+  }),
+)
 
-// Todas las rutas siguientes requieren Basic Auth
-app.use(basicAuthMiddleware)
+propertyRouter.post(
+  '/',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = propertyPayloadSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
 
-// 🔹 Obtener eventos
-app.get(
-  '/properties/:propertyId/events',
-  asyncHandler(async (req, res) => {
-    const propertyId = getPropertyId(req)
-    const events = await listEvents(propertyId)
+    const userId = getUserId(req)
+    const property = await propertyService.create(userId, parseResult.data)
+    res.status(201).json({ property })
+  }),
+)
+
+propertyRouter.patch(
+  '/:propertyId',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = propertyUpdateSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
+
+    const userId = getUserId(req)
+    const property = await propertyService.update(userId, req.params.propertyId, parseResult.data)
+    res.json({ property })
+  }),
+)
+
+propertyRouter.get(
+  '/:propertyId/events',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const userId = getUserId(req)
+    const events = await eventService.listForUser(userId, req.params.propertyId)
     res.json({ events })
   }),
 )
 
-// 🔹 Crear evento manual
-app.post(
-  '/properties/:propertyId/events',
-  asyncHandler(async (req, res) => {
+propertyRouter.post(
+  '/:propertyId/events',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
     const parseResult = eventPayloadSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res
-        .status(400)
-        .json({ message: 'Payload inválido', issues: parseResult.error.issues })
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
       return
     }
 
-    try {
-      const propertyId = getPropertyId(req)
-      // ✅ Armar payload solo con campos necesarios (sin undefined / null)
-      const { title, start, end, description, location } = parseResult.data
-      const cleanData: {
-        title: string
-        start: string
-        end: string
-        description?: string
-        location?: string
-      } = {
-        title,
-        start,
-        end,
-        ...(description != null ? { description } : {}),
-        ...(location != null ? { location } : {}),
-      }
-
-      const event = await createManualEvent(propertyId, cleanData)
-      res.status(201).json({ event })
-    } catch (error) {
-      console.error('[createManualEvent]', error)
-      res.status(500).json({ message: 'No se pudo crear el evento.' })
-    }
+    const userId = getUserId(req)
+    const event = await eventService.createManualEvent(userId, req.params.propertyId, parseResult.data)
+    res.status(201).json({ event })
   }),
 )
 
-// 🔹 Eliminar evento
-app.delete(
-  '/properties/:propertyId/events/:eventId',
-  asyncHandler(async (req, res) => {
-    const propertyId = getPropertyId(req)
-    const { eventId } = req.params
-    if (!eventId) {
-      res
-        .status(400)
-        .json({ message: 'El identificador del evento es requerido.' })
+propertyRouter.patch(
+  '/:propertyId/events/:eventId',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = eventStatusSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
       return
     }
 
-    await deleteEvent(propertyId, eventId)
+    const userId = getUserId(req)
+    const event = await eventService.updateEventStatus(userId, req.params.propertyId, req.params.eventId, parseResult.data.status)
+    res.json({ event })
+  }),
+)
+
+propertyRouter.delete(
+  '/:propertyId/events/:eventId',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const userId = getUserId(req)
+    await eventService.deleteEvent(userId, req.params.propertyId, req.params.eventId)
     res.status(204).send()
   }),
 )
 
-// Helper tipado: sanitiza un AirbnbCalendarEvent sin romper el tipo
-const sanitizeAirbnbEvent = (e: AirbnbCalendarEvent): AirbnbCalendarEvent => {
-  const base: AirbnbCalendarEvent = {
-    uid: e.uid,
-    summary: e.summary,
-    start: e.start,
-    end: e.end,
-    status: e.status,
-  }
-  if (e.description != null) base.description = e.description
-  if (e.location != null) base.location = e.location
-  return base
-}
-
-// 🔹 Sincronizar con Airbnb (ICal)
-app.post(
-  '/properties/:propertyId/airbnb/sync',
-  asyncHandler(async (req, res) => {
-    const propertyId = getPropertyId(req)
+propertyRouter.post(
+  '/:propertyId/airbnb/sync',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
     const parseResult = syncPayloadSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res
-        .status(400)
-        .json({ message: 'Payload inválido', issues: parseResult.error.issues })
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
       return
     }
 
-    try {
-      const { icalUrl: providedUrl, includeTentative = false } = parseResult.data
-      const icalUrl =
-        providedUrl ?? process.env.AIRBNB_ICAL_URL ?? config.airbnbIcalUrl ?? ''
-
-      if (!icalUrl) {
-        res
-          .status(400)
-          .json({ message: 'Falta icalUrl (ni en el body ni en AIRBNB_ICAL_URL).' })
-        return
-      }
-
-      const icsRaw = await downloadIcs(icalUrl)
-      const { confirmed, tentative } = parseAirbnbIcs(icsRaw, includeTentative)
-
-      // ✅ Sanitizar manteniendo el tipo AirbnbCalendarEvent
-      const cleanConfirmed: AirbnbCalendarEvent[] = confirmed.map(sanitizeAirbnbEvent)
-      const cleanTentative: AirbnbCalendarEvent[] = includeTentative
-        ? tentative.map(sanitizeAirbnbEvent)
-        : []
-
-      await replaceAirbnbEvents(propertyId, cleanConfirmed, cleanTentative)
-
-      const payload: SyncResponse = {
-        propertyId,
-        fetchedAt: new Date().toISOString(),
-        totalEvents: cleanConfirmed.length + cleanTentative.length,
-        confirmedEvents: cleanConfirmed,
-        tentativeEvents: cleanTentative,
-      }
-
-      res.status(200).json(payload)
-    } catch (error) {
-      console.error('[syncAirbnb]', error)
-      const message =
-        error instanceof Error
-          ? `No se pudo obtener el calendario desde Airbnb: ${error.message}`
-          : 'No se pudo obtener el calendario desde Airbnb.'
-      res.status(502).json({ message })
-    }
+    const userId = getUserId(req)
+    const result = await eventService.syncAirbnb(userId, req.params.propertyId, parseResult.data.includeTentative, parseResult.data.icalUrl)
+    res.json(result)
   }),
 )
 
-// 🔹 Handler global de errores
+app.use('/properties', propertyRouter)
+
+/* ==================== Rutas públicas ==================== */
+
+const publicRequestSchema = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  requesterName: z.string().min(1, 'El nombre es obligatorio'),
+  requesterEmail: z.string().email().optional(),
+  requesterPhone: z.string().min(4).optional(),
+  notes: z.string().max(1000).optional(),
+})
+
+const publicRouter = express.Router()
+
+publicRouter.get(
+  '/properties/:publicSlug',
+  asyncHandler(async (req, res) => {
+    const data = await eventService.getPublicAvailability(req.params.publicSlug)
+    if (!data) {
+      res.status(404).json({ message: 'Propiedad no encontrada' })
+      return
+    }
+
+    res.json(data)
+  }),
+)
+
+publicRouter.post(
+  '/properties/:publicSlug/requests',
+  asyncHandler(async (req, res) => {
+    const parseResult = publicRequestSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
+
+    const event = await eventService.createPublicRequest(req.params.publicSlug, parseResult.data)
+    res.status(201).json({ event })
+  }),
+)
+
+app.use('/public', publicRouter)
+
+/* ==================== Handler de errores ==================== */
+
 app.use((error: unknown, _req: Request, res: Response) => {
+  if (isServiceError(error)) {
+    res.status(error.status).json({ message: error.message })
+    return
+  }
+
   console.error('[calendarApi][unhandled]', error)
   res.status(500).json({ message: 'Error inesperado en la API.' })
 })

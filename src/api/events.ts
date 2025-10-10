@@ -1,94 +1,52 @@
-import type { CalendarEventDTO, NewEventPayload, SyncAirbnbPayload } from '../types'
+import { apiRequest } from './http'
+import type { CalendarEventDTO, NewEventPayload, SyncAirbnbPayload, UpdateEventStatusPayload } from '../types'
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
-const DEFAULT_PROPERTY_ID = (import.meta.env.VITE_PROPERTY_ID as string | undefined) ?? 'default-property'
-const BASIC_AUTH_TOKEN = (import.meta.env.VITE_API_BASIC_AUTH as string | undefined) ?? ''
+const buildPath = (propertyId: string, suffix: string) => `/properties/${encodeURIComponent(propertyId)}${suffix}`
 
-if (!API_BASE_URL) {
-  console.warn('VITE_API_BASE_URL no está definido. Las llamadas a la API fallarán.')
-}
-
-const normalizeBaseUrl = (url: string) => (url.endsWith('/') ? url.slice(0, -1) : url)
-
-const baseUrl = normalizeBaseUrl(API_BASE_URL)
-
-const buildHeaders = (extra?: Record<string, string>) => {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...extra,
-  }
-
-  if (BASIC_AUTH_TOKEN) {
-    headers.Authorization = `Basic ${BASIC_AUTH_TOKEN}`
-  }
-
-  return headers
-}
-
-const handleResponse = async (response: Response) => {
-  const payload = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    const message = typeof payload?.message === 'string' ? payload.message : 'No se pudo completar la operación.'
-    throw new Error(message)
-  }
-
-  return payload
-}
-
-const buildPropertyPath = (propertyId?: string) => {
-  const id = propertyId?.trim() || DEFAULT_PROPERTY_ID
-  return `${baseUrl}/properties/${encodeURIComponent(id)}`
-}
-
-export const fetchEvents = async (propertyId?: string): Promise<CalendarEventDTO[]> => {
-  const response = await fetch(`${buildPropertyPath(propertyId)}/events`, {
-    headers: buildHeaders(),
-  })
-  const data = await handleResponse(response)
+export const fetchEvents = async (propertyId: string): Promise<CalendarEventDTO[]> => {
+  const data = await apiRequest<{ events: CalendarEventDTO[] }>(buildPath(propertyId, '/events'), { auth: true })
   return Array.isArray(data.events) ? data.events : []
 }
 
-export const createEvent = async (
-  event: NewEventPayload,
-  propertyId?: string,
-): Promise<CalendarEventDTO> => {
-  const response = await fetch(`${buildPropertyPath(propertyId)}/events`, {
+export const createEvent = async (propertyId: string, payload: NewEventPayload): Promise<CalendarEventDTO> => {
+  const data = await apiRequest<{ event: CalendarEventDTO }>(buildPath(propertyId, '/events'), {
     method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify(event),
+    auth: true,
+    json: payload,
   })
-
-  const data = await handleResponse(response)
   if (!data.event) {
     throw new Error('Respuesta inesperada del servidor.')
   }
-
   return data.event
 }
 
-export const deleteEvent = async (id: string, propertyId?: string): Promise<void> => {
-  const response = await fetch(`${buildPropertyPath(propertyId)}/events/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: buildHeaders(),
+export const updateEventStatus = async (
+  propertyId: string,
+  eventId: string,
+  payload: UpdateEventStatusPayload,
+): Promise<CalendarEventDTO> => {
+  const data = await apiRequest<{ event: CalendarEventDTO }>(buildPath(propertyId, `/events/${encodeURIComponent(eventId)}`), {
+    method: 'PATCH',
+    auth: true,
+    json: payload,
   })
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}))
-    const message = typeof payload?.message === 'string' ? payload.message : 'No se pudo eliminar el evento.'
-    throw new Error(message)
+  if (!data.event) {
+    throw new Error('Respuesta inesperada del servidor.')
   }
+  return data.event
 }
 
-export const syncAirbnb = async (
-  payload: SyncAirbnbPayload,
-  propertyId?: string,
-): Promise<void> => {
-  const response = await fetch(`${buildPropertyPath(propertyId)}/airbnb/sync`, {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify(payload),
+export const deleteEvent = async (propertyId: string, eventId: string): Promise<void> => {
+  await apiRequest(buildPath(propertyId, `/events/${encodeURIComponent(eventId)}`), {
+    method: 'DELETE',
+    auth: true,
   })
+}
 
-  await handleResponse(response)
+export const syncAirbnb = async (propertyId: string, payload: SyncAirbnbPayload): Promise<void> => {
+  await apiRequest(buildPath(propertyId, '/airbnb/sync'), {
+    method: 'POST',
+    auth: true,
+    json: payload,
+  })
 }

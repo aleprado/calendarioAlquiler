@@ -38,13 +38,13 @@ jobs:
         run: npm ci
         working-directory: functions
 
+      - name: Build functions
+        run: npm run build
+        working-directory: functions
+
       - name: Deploy calendar-api (Gen2)
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          BASIC_USER: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_USER }}
-          BASIC_PASS: ${{ secrets.GCP_FUNCTION_BASIC_AUTH_PASSWORD }}
-          DEFAULT_PROPERTY_ID: ${{ secrets.DEFAULT_PROPERTY_ID }}
-          AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
         run: |
           gcloud functions deploy calendar-api \
             --gen2 \
@@ -55,7 +55,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --service-account="airbnb-calendar-functions@${PROJECT_ID}.iam.gserviceaccount.com" \
-            --set-env-vars="AIRBNB_ICAL_URL=${AIRBNB_ICAL_URL},NODE_ENV=production,BASIC_AUTH_USER=${BASIC_USER},BASIC_AUTH_PASSWORD=${BASIC_PASS},DEFAULT_PROPERTY_ID=${DEFAULT_PROPERTY_ID},ALLOW_UNAUTHENTICATED=true"
+            --set-env-vars="NODE_ENV=production"
 
       - name: Get Function URL
         id: fn_url
@@ -77,16 +77,21 @@ jobs:
           cache: npm
 
       - name: Install deps
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint
 
-      - name: Build (inject backend URL)
+      - name: Build (inject env)
         run: npm run build
         env:
-          REACT_APP_API_URL: ${{ needs.deploy_functions_cli.outputs.function_url }}
-          VITE_API_URL: ${{ needs.deploy_functions_cli.outputs.function_url }}
+          VITE_API_BASE_URL: ${{ needs.deploy_functions_cli.outputs.function_url }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_WEB_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_WEB_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_WEB_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_WEB_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_WEB_APP_ID }}
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
