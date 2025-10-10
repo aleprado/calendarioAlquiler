@@ -22,6 +22,7 @@ const rangesOverlap = (a: CalendarEvent, b: CalendarEvent) => {
 
 const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb'
 const isManual = (e: CalendarEvent) => e.source === 'manual'
+const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && e.status === 'confirmed'
 
 type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
@@ -32,11 +33,11 @@ const computeVisibleEvents = (all: CalendarEvent[]): ViewEvent[] => {
   const airbnbHidden = new Set<string>()
 
   manuals.forEach((manual) => {
-    const overlapsAirbnb = airbnbs.some((airbnb) => rangesOverlap(manual, airbnb))
+    const overlapsAirbnb = airbnbs.some((airbnb) => isAirbnbReserved(airbnb) && rangesOverlap(manual, airbnb))
     if (overlapsAirbnb) {
       ;(manual as ViewEvent).duplicateWithAirbnb = true
       airbnbs.forEach((airbnb) => {
-        if (rangesOverlap(manual, airbnb)) airbnbHidden.add(airbnb.id)
+        if (isAirbnbReserved(airbnb) && rangesOverlap(manual, airbnb)) airbnbHidden.add(airbnb.id)
       })
     }
   })
@@ -100,24 +101,22 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior 
     return <div className="month-event-line"><strong>Reserva confirmada</strong></div>
   }
 
-  if (event.duplicateWithAirbnb) {
-    return (
-      <div className="month-event-line">
-        <strong>{title}</strong> — <span className="status-badge">Bloqueado en Airbnb</span>
-      </div>
-    )
-  }
+  const badge = event.duplicateWithAirbnb ? (
+    <span className="status-badge">Bloqueado en Airbnb</span>
+  ) : (
+    <span className="status-badge status--warning">No bloqueado en Airbnb</span>
+  )
 
   return (
     <div className="month-event-line">
-      <strong>{title}</strong>
+      <strong>{title}</strong> — {badge}
     </div>
   )
 }
 
 const getEventStyle = (event: ViewEvent) => {
   if (event.source === 'airbnb') {
-    const color = event.status === 'tentative' ? '#8b5cf6' : '#6b21a8'
+    const color = event.status === 'tentative' ? '#facc15' : '#f97316'
     return {
       backgroundColor: color,
       borderColor: color,
@@ -127,18 +126,18 @@ const getEventStyle = (event: ViewEvent) => {
 
   if (event.source === 'public') {
     if (event.status === 'pending') {
-      const color = '#f97316'
+      const color = '#fb923c'
       return { backgroundColor: color, borderColor: color, color: '#ffffff' }
     }
     if (event.status === 'declined') {
-      const color = '#6b7280'
+      const color = '#94a3b8'
       return { backgroundColor: color, borderColor: color, color: '#f3f4f6' }
     }
     const color = '#10b981'
     return { backgroundColor: color, borderColor: color, color: '#ffffff' }
   }
 
-  const color = '#2563eb'
+  const color = '#0ea5e9'
   const style: Record<string, string> = {
     backgroundColor: color,
     borderColor: color,
@@ -146,7 +145,8 @@ const getEventStyle = (event: ViewEvent) => {
   }
 
   if (event.duplicateWithAirbnb) {
-    style.outline = '2px dashed rgba(255,255,255,0.6)'
+    style.boxShadow = 'inset 0 0 0 2px rgba(255,255,255,0.65)'
+    style.outline = '2px dashed rgba(14,165,233,0.45)'
   }
 
   return style
@@ -171,23 +171,46 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
 
   const visibleEvents = useMemo(() => computeVisibleEvents(events), [events])
 
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true)
-    setGlobalError(null)
-    try {
-      const payload = await fetchEvents(property.id)
-      const mapped = payload.map(toCalendarEvent).sort((a, b) => a.start.getTime() - b.start.getTime())
-      setEvents(mapped)
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : 'No se pudieron cargar los eventos.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [property.id])
+  const loadEvents = useCallback(
+    async (options?: { skipClearError?: boolean }) => {
+      setIsLoading(true)
+      if (!options?.skipClearError) {
+        setGlobalError(null)
+      }
+      try {
+        const payload = await fetchEvents(property.id)
+        const mapped = payload.map(toCalendarEvent).sort((a, b) => a.start.getTime() - b.start.getTime())
+        setEvents(mapped)
+      } catch (error) {
+        setGlobalError(error instanceof Error ? error.message : 'No se pudieron cargar los eventos.')
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [property.id],
+  )
 
   useEffect(() => {
-    void loadEvents()
-  }, [loadEvents])
+    let active = true
+    const bootstrap = async () => {
+      if (active) setIsSyncing(true)
+      let syncFailed = false
+      try {
+        await syncAirbnb(property.id, {})
+      } catch (error) {
+        syncFailed = true
+        if (active) {
+          setGlobalError(error instanceof Error ? error.message : 'No se pudo sincronizar con Airbnb.')
+        }
+      }
+      await loadEvents(syncFailed ? { skipClearError: true } : undefined)
+      if (active) setIsSyncing(false)
+    }
+    bootstrap()
+    return () => {
+      active = false
+    }
+  }, [loadEvents, property.id])
 
   const handleSelectSlot = useCallback((slot: SlotInfo) => {
     const slots = Array.isArray(slot.slots) ? slot.slots : []
@@ -227,19 +250,6 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
     },
     [handleCloseModal, pendingRange, property.id],
   )
-
-  const handleSyncAirbnb = useCallback(async () => {
-    setIsSyncing(true)
-    setGlobalError(null)
-    try {
-      await syncAirbnb(property.id, {})
-      await loadEvents()
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : 'No se pudo sincronizar con Airbnb.')
-    } finally {
-      setIsSyncing(false)
-    }
-  }, [loadEvents, property.id])
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event)
@@ -320,14 +330,11 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
 
   return (
     <section className="property-workspace">
-      <div className="workspace-actions">
-        <button type="button" className="secondary" onClick={() => void loadEvents()} disabled={isLoading || isSyncing}>
-          {isLoading ? 'Cargando...' : 'Recargar eventos'}
-        </button>
-        <button type="button" className="secondary" onClick={() => void handleSyncAirbnb()} disabled={isSyncing || isLoading}>
-          {isSyncing ? 'Sincronizando…' : 'Sincronizar Airbnb'}
-        </button>
-      </div>
+      {isSyncing && (
+        <div className="info-banner" role="status">
+          <span>Sincronizando con Airbnb…</span>
+        </div>
+      )}
 
       {globalError && (
         <div className="alert" role="alert">

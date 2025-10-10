@@ -26,8 +26,10 @@ export const LandingPage = () => {
   return (
     <div className="landing-layout">
       <header className="landing-hero">
-        <h1>Simple Alquiler</h1>
-        <p>Gestiona tus propiedades, sincroniza con Airbnb y comparte la disponibilidad con tus huéspedes.</p>
+        <h1>
+          Simple Alquiler <span>by the beach</span>
+        </h1>
+        <p>Gestiona tus propiedades, sincroniza con Airbnb y comparte la disponibilidad con tus huéspedes desde una experiencia pensada para el turismo.</p>
         <button type="button" className="primary" onClick={handleSignIn} disabled={loading}>
           {loading ? 'Cargando...' : 'Ingresar con Google'}
         </button>
