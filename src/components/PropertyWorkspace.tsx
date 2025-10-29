@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react'
-import type { SlotInfo } from 'react-big-calendar'
+import type { EventProps, SlotInfo } from 'react-big-calendar'
 import { EventFormModal } from './EventFormModal'
 import { EventDetailsModal } from './EventDetailsModal'
-import { MultiMonthCalendar, type CalendarEventPropGetter } from './MultiMonthCalendar'
+import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
 import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEventStatus } from '../api/events'
 
@@ -113,9 +113,13 @@ const calendarMessages = {
   noEventsInRange: 'No hay eventos en este rango.',
 }
 
-type MonthEventProps = { event: ViewEvent; title: string; continuesPrior?: boolean }
+type MonthEventProps = MonthEventComponentProps & EventProps<ViewEvent>
 
-const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior }) => {
+const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior, monthDate, slotStart }) => {
+  if (continuesPrior && slotStart.getMonth() !== monthDate.getMonth()) {
+    return <span />
+  }
+
   const baseClassName = continuesPrior ? 'month-event-line month-event-line--continued' : 'month-event-line'
 
   if (event.source === 'airbnb') {

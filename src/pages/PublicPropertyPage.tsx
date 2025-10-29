@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SlotInfo } from 'react-big-calendar'
 import { useParams } from 'react-router-dom'
-import { MultiMonthCalendar, type CalendarEventPropGetter } from '../components/MultiMonthCalendar'
+import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from '../components/MultiMonthCalendar'
 import { RequestFormModal } from '../components/RequestFormModal'
 import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
 import { AboutAppModal } from '../components/AboutAppModal'
@@ -147,7 +147,15 @@ export const PublicPropertyPage = () => {
     [dayStatuses],
   )
 
-  const renderPublicMonthEvent = useCallback(() => <span aria-hidden="true" />, [])
+  const renderPublicMonthEvent = useCallback(
+    ({ continuesPrior, monthDate, slotStart }: MonthEventComponentProps) => {
+      if (continuesPrior && slotStart.getMonth() !== monthDate.getMonth()) {
+        return <span aria-hidden="true" />
+      }
+      return <span aria-hidden="true" />
+    },
+    [],
+  )
 
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {

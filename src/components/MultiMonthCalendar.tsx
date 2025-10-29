@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createElement, useMemo } from 'react'
 import { addDays, addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Views, type CalendarProps, type Components, type SlotInfo, type EventProps } from 'react-big-calendar'
@@ -7,6 +7,7 @@ import { localizer } from '../lib/dateLocalizer'
 
 type CalendarMessages = NonNullable<CalendarProps<CalendarEvent>['messages']>
 export type CalendarEventPropGetter = NonNullable<CalendarProps<CalendarEvent>['eventPropGetter']>
+export type MonthEventComponentProps = EventProps<CalendarEvent> & { monthDate: Date }
 
 type MultiMonthCalendarProps = {
   events: CalendarEvent[]
@@ -14,7 +15,7 @@ type MultiMonthCalendarProps = {
   onSelectSlot: (slot: SlotInfo) => void
   onSelectEvent: (event: CalendarEvent) => void
   eventPropGetter?: CalendarEventPropGetter
-  renderMonthEvent?: React.ComponentType<EventProps<CalendarEvent>>
+  renderMonthEvent?: React.ComponentType<MonthEventComponentProps>
   dayPropGetter?: CalendarProps<CalendarEvent>['dayPropGetter']
 }
 
@@ -92,7 +93,14 @@ export const MultiMonthCalendar = ({
               longPressThreshold={250}
               components={{
                 toolbar,
-                month: { event: renderMonthEvent },
+                ...(renderMonthEvent
+                  ? {
+                      month: {
+                        event: (eventProps: EventProps<CalendarEvent>) =>
+                          createElement(renderMonthEvent, { ...eventProps, monthDate: date }),
+                      },
+                    }
+                  : {}),
               }}
               culture="es"
               eventPropGetter={eventPropGetter}
