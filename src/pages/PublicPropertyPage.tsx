@@ -26,10 +26,16 @@ const calendarMessages = {
   noEventsInRange: 'No hay eventos en este rango.',
 }
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000
+
+const toUtcDateKey = (date: Date) => date.toISOString().slice(0, 10)
+
+const toUtcMidnight = (date: Date) => Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+
 const toCalendarEvents = (data: PublicAvailabilityDTO): CalendarEvent[] =>
   data.events.map((item, index) => ({
     id: `${data.propertyId}-${index}`,
-    title: item.status === 'pending' ? 'Solicitud en revisión' : 'No disponible',
+    title: '',
     start: new Date(item.start),
     end: new Date(item.end),
     source: 'public',
@@ -42,14 +48,13 @@ const rangesOverlap = (a: CalendarEvent, start: Date, end: Date) => {
   return aStart < end && aEnd > start
 }
 
-const eventPropGetter: CalendarEventPropGetter = (event) => {
-  const isPending = event.status === 'pending'
-  const backgroundColor = isPending ? '#f97316' : '#6b7280'
+const eventPropGetter: CalendarEventPropGetter = () => {
   return {
     style: {
-      backgroundColor,
-      borderColor: backgroundColor,
-      color: '#ffffff',
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      color: 'transparent',
+      pointerEvents: 'none',
     },
   }
 }
@@ -86,6 +91,49 @@ export const PublicPropertyPage = () => {
   }, [loadAvailability])
 
   const events = useMemo(() => (data ? toCalendarEvents(data) : []), [data])
+
+  const blockedDays = useMemo(() => {
+    const days = new Set<string>()
+
+    events.forEach((event) => {
+      // Work in UTC to avoid local timezone offsets shifting blocked days earlier.
+      const startUtc = toUtcMidnight(event.start)
+      let end = event.end <= event.start ? event.start : event.end
+
+      const endIsUtcMidnight =
+        end.getUTCHours() === 0 && end.getUTCMinutes() === 0 && end.getUTCSeconds() === 0 && end.getUTCMilliseconds() === 0
+
+      if (endIsUtcMidnight && end > event.start) {
+        end = new Date(end.getTime() - 1)
+      }
+
+      const endUtc = toUtcMidnight(end)
+
+      if (endUtc < startUtc) {
+        days.add(toUtcDateKey(event.start))
+        return
+      }
+
+      for (let cursor = startUtc; cursor <= endUtc; cursor += MS_IN_DAY) {
+        days.add(toUtcDateKey(new Date(cursor)))
+      }
+    })
+
+    return days
+  }, [events])
+
+  const dayPropGetter = useCallback(
+    (date: Date) => {
+      const key = toUtcDateKey(date)
+      if (blockedDays.has(key)) {
+        return { className: 'calendar-day--blocked' }
+      }
+      return {}
+    },
+    [blockedDays],
+  )
+
+  const renderPublicMonthEvent = useCallback(() => <span aria-hidden="true" />, [])
 
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {
@@ -165,6 +213,8 @@ export const PublicPropertyPage = () => {
               onSelectSlot={handleSelectSlot}
               onSelectEvent={() => undefined}
               eventPropGetter={eventPropGetter}
+              renderMonthEvent={renderPublicMonthEvent}
+              dayPropGetter={dayPropGetter}
             />
           </section>
           <div className="public-footer">
