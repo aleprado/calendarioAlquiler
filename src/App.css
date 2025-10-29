@@ -726,6 +726,10 @@ body {
   padding-top: 0.1rem;
 }
 
+.month-event-line--ghost {
+  color: transparent;
+}
+
 .month-event-line.declined {
   color: #94a3b8;
 }

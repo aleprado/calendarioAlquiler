@@ -123,6 +123,11 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior,
   }
 
   const baseClassName = continuesPrior ? 'month-event-line month-event-line--continued' : 'month-event-line'
+  const shouldShowContent = !continuesPrior || slotStart.getDate() === 1
+
+  if (!shouldShowContent) {
+    return <div className={`${baseClassName} month-event-line--ghost`} aria-hidden="true" />
+  }
 
   if (event.source === 'airbnb') {
     const label = event.status === 'tentative' ? 'Tentativo en Airbnb' : 'Reservado en Airbnb'

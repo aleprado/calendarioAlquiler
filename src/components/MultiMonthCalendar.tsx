@@ -103,7 +103,12 @@ export const MultiMonthCalendar = ({
               }}
               culture="es"
               eventPropGetter={eventPropGetter}
-              dayPropGetter={dayPropGetter}
+              dayPropGetter={
+                dayPropGetter
+                  ? (currentDate) =>
+                      currentDate.getMonth() === date.getMonth() ? dayPropGetter(currentDate) : {}
+                  : undefined
+              }
             />
           </div>
         ))}
