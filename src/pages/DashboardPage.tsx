@@ -209,7 +209,6 @@ export const DashboardPage = () => {
     <div className="dashboard-layout">
       <header className="dashboard-topbar">
         <div className="topbar-left">
-          <img src="/logo.png" alt="Simple Alquiler" className="brand-logo" />
           <button type="button" className="link-button topbar-info-link" onClick={() => setIsInfoOpen(true)}>
             Conoce la app
           </button>
