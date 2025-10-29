@@ -22,13 +22,6 @@ const TOTAL_MONTHS = 12
 
 const toolbar: Components<CalendarEvent>['toolbar'] = () => null
 
-const formatRangeLabel = (date: Date) => {
-  const end = addMonths(date, TOTAL_MONTHS - 1)
-  const startLabel = format(date, 'LLLL yyyy', { locale: es })
-  const endLabel = format(end, 'LLLL yyyy', { locale: es })
-  return `${startLabel} - ${endLabel}`
-}
-
 export const MultiMonthCalendar = ({
   events,
   messages,
@@ -51,9 +44,6 @@ export const MultiMonthCalendar = ({
 
   return (
     <div className="multi-month-calendar">
-      <div className="multi-month-calendar__label">
-        {formatRangeLabel(visibleStart)}
-      </div>
       <div className="multi-month-calendar__grid">
         {months.map(({ id, date }) => (
           <div key={id} className="multi-month-calendar__cell">

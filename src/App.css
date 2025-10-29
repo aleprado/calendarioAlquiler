@@ -576,20 +576,13 @@ body {
   gap: 1.5rem;
 }
 
-.multi-month-calendar__label {
-  font-weight: 700;
-  color: var(--color-primary-dark);
-  text-transform: capitalize;
-  text-align: center;
-}
-
 .multi-month-calendar__grid {
   display: grid;
   gap: 1.25rem;
   grid-template-columns: 1fr;
   flex: 1;
   min-height: 0;
-  grid-auto-rows: minmax(420px, auto);
+  grid-auto-rows: minmax(520px, auto);
 }
 
 @media (min-width: 768px) {
@@ -639,12 +632,21 @@ body {
 }
 
 .multi-month-calendar .rbc-date-cell {
-  padding: 0.35rem;
+  padding: 0.75rem 0.6rem;
   color: var(--color-text);
 }
 
 .multi-month-calendar .rbc-off-range-bg {
-  background: rgba(226, 232, 240, 0.5);
+  background: transparent;
+}
+
+.multi-month-calendar .rbc-off-range {
+  color: transparent;
+  pointer-events: none;
+}
+
+.multi-month-calendar .rbc-off-range .rbc-button-link {
+  visibility: hidden;
 }
 
 .multi-month-calendar .calendar-day--blocked {
@@ -674,9 +676,14 @@ body {
 }
 
 .month-event-line {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.month-event-line--continued {
+  padding-top: 0.1rem;
 }
 
 .month-event-line.declined {

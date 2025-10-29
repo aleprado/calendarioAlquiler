@@ -116,19 +116,23 @@ const calendarMessages = {
 type MonthEventProps = { event: ViewEvent; title: string; continuesPrior?: boolean }
 
 const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior }) => {
-  if (continuesPrior) return <span />
+  const baseClassName = continuesPrior ? 'month-event-line month-event-line--continued' : 'month-event-line'
 
   if (event.source === 'airbnb') {
     const label = event.status === 'tentative' ? 'Tentativo en Airbnb' : 'Reservado en Airbnb'
-    return <div className="month-event-line">{label}</div>
+    return <div className={baseClassName}>{label}</div>
   }
 
   if (event.source === 'public' && !behavesAsManual(event)) {
     if (event.status === 'pending') {
-      return <div className="month-event-line"><strong>Solicitud pendiente</strong></div>
+      return (
+        <div className={baseClassName}>
+          <strong>Solicitud pendiente</strong>
+        </div>
+      )
     }
     if (event.status === 'declined') {
-      return <div className="month-event-line declined">Solicitud declinada</div>
+      return <div className={`${baseClassName} declined`}>Solicitud declinada</div>
     }
   }
 
@@ -139,7 +143,7 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior 
   )
 
   return (
-    <div className="month-event-line">
+    <div className={baseClassName}>
       <strong>{title}</strong> — {badge}
     </div>
   )
