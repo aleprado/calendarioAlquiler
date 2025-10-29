@@ -1,5 +1,5 @@
 import { createElement, useMemo } from 'react'
-import { addDays, addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
+import { addMonths, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Views, type CalendarProps, type Components, type SlotInfo, type EventProps } from 'react-big-calendar'
 import type { CalendarEvent } from '../types'
@@ -25,21 +25,20 @@ const toolbar: Components<CalendarEvent>['toolbar'] = () => null
 
 const clampEventsToMonth = <T extends CalendarEvent>(events: T[], monthDate: Date): T[] => {
   const monthStart = startOfMonth(monthDate)
-  const monthEnd = endOfMonth(monthDate)
-  const rangeEnd = addDays(monthEnd, 1)
+  const monthEndExclusive = addMonths(monthStart, 1)
   const monthStartTime = monthStart.getTime()
-  const rangeEndTime = rangeEnd.getTime()
+  const monthEndExclusiveTime = monthEndExclusive.getTime()
 
   return events.reduce<T[]>((acc, event) => {
     const eventStartTime = event.start.getTime()
     const eventEndTime = event.end.getTime()
 
-    if (eventEndTime <= monthStartTime || eventStartTime >= rangeEndTime) {
+    if (eventEndTime <= monthStartTime || eventStartTime >= monthEndExclusiveTime) {
       return acc
     }
 
     const start = eventStartTime < monthStartTime ? new Date(monthStartTime) : event.start
-    const end = eventEndTime > rangeEndTime ? new Date(rangeEndTime) : event.end
+    const end = eventEndTime > monthEndExclusiveTime ? new Date(monthEndExclusiveTime) : event.end
 
     if (start === event.start && end === event.end) {
       acc.push(event)
