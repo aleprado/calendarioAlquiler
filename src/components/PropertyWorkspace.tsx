@@ -8,6 +8,13 @@ import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEventStatus } 
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+const isUtcMidnight = (d: Date) =>
+  d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0
+const toUtcDateKey = (date: Date) => date.toISOString().slice(0, 10)
+const toLocalMidnightFromKey = (key: string) => {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
 const normRange = (ev: CalendarEvent) => {
   const s = startOfDayLocal(ev.start)
   const e0 = startOfDayLocal(ev.end)
@@ -47,20 +54,45 @@ const computeVisibleEvents = (all: CalendarEvent[]): ViewEvent[] => {
     .map((event) => event as ViewEvent)
 }
 
-const toCalendarEvent = (dto: CalendarEventDTO): CalendarEvent => ({
-  id: dto.id,
-  title: dto.title,
-  start: new Date(dto.start),
-  end: new Date(dto.end),
-  source: dto.source ?? 'manual',
-  status: dto.status ?? 'confirmed',
-  description: dto.description,
-  location: dto.location,
-  requesterName: dto.requesterName,
-  requesterEmail: dto.requesterEmail,
-  requesterPhone: dto.requesterPhone,
-  notes: dto.notes,
-})
+const normalizeEventDates = (
+  source: CalendarEvent['source'],
+  start: Date,
+  end: Date,
+): { start: Date; end: Date } => {
+  if (source !== 'airbnb') {
+    return { start, end }
+  }
+
+  if (!isUtcMidnight(start) || !isUtcMidnight(end)) {
+    return { start, end }
+  }
+
+  const adjustedStart = toLocalMidnightFromKey(toUtcDateKey(start))
+  const adjustedEnd = toLocalMidnightFromKey(toUtcDateKey(end))
+  return { start: adjustedStart, end: adjustedEnd }
+}
+
+const toCalendarEvent = (dto: CalendarEventDTO): CalendarEvent => {
+  const source = dto.source ?? 'manual'
+  const start = new Date(dto.start)
+  const end = new Date(dto.end)
+  const normalized = normalizeEventDates(source, start, end)
+
+  return {
+    id: dto.id,
+    title: dto.title,
+    start: normalized.start,
+    end: normalized.end,
+    source,
+    status: dto.status ?? 'confirmed',
+    description: dto.description,
+    location: dto.location,
+    requesterName: dto.requesterName,
+    requesterEmail: dto.requesterEmail,
+    requesterPhone: dto.requesterPhone,
+    notes: dto.notes,
+  }
+}
 
 const calendarMessages = {
   date: 'Fecha',
