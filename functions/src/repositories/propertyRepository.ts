@@ -1,5 +1,5 @@
 import { FieldValue, type DocumentReference } from '@google-cloud/firestore'
-import { firestore, propertiesCollection } from '../firestore'
+import { propertiesCollection } from '../firestore'
 
 export interface PropertyRecord {
   id: string

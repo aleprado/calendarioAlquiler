@@ -49,7 +49,7 @@ export class PropertyService {
   }
 
   async update(userId: string, propertyId: string, payload: UpdatePropertyPayload): Promise<PropertyRecord> {
-    const property = this.assertAccess(userId, await propertyRepository.getById(propertyId))
+    this.assertAccess(userId, await propertyRepository.getById(propertyId))
 
     return await propertyRepository.update(propertyId, {
       name: payload.name,
