@@ -1,5 +1,5 @@
 import { apiRequest } from './http'
-import type { NewPropertyPayload, PropertyDTO, UpdatePropertyPayload } from '../types'
+import type { JoinPropertyPayload, NewPropertyPayload, PropertyDTO, UpdatePropertyPayload } from '../types'
 
 export const listProperties = async (): Promise<PropertyDTO[]> => {
   const data = await apiRequest<{ properties: PropertyDTO[] }>('/properties', { auth: true })
@@ -23,6 +23,20 @@ export const createProperty = async (payload: NewPropertyPayload): Promise<Prope
 export const updateProperty = async (propertyId: string, payload: UpdatePropertyPayload): Promise<PropertyDTO> => {
   const data = await apiRequest<{ property: PropertyDTO }>(`/properties/${encodeURIComponent(propertyId)}`, {
     method: 'PATCH',
+    auth: true,
+    json: payload,
+  })
+
+  if (!data.property) {
+    throw new Error('Respuesta inesperada del servidor.')
+  }
+
+  return data.property
+}
+
+export const joinProperty = async (payload: JoinPropertyPayload): Promise<PropertyDTO> => {
+  const data = await apiRequest<{ property: PropertyDTO }>('/properties/join', {
+    method: 'POST',
     auth: true,
     json: payload,
   })

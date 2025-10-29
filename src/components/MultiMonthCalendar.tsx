@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { addMonths, format, startOfMonth } from 'date-fns'
+import { addDays, addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Views, type CalendarProps, type Components, type SlotInfo, type EventProps } from 'react-big-calendar'
 import type { CalendarEvent } from '../types'
@@ -21,6 +21,34 @@ type MultiMonthCalendarProps = {
 const TOTAL_MONTHS = 12
 
 const toolbar: Components<CalendarEvent>['toolbar'] = () => null
+
+const clampEventsToMonth = <T extends CalendarEvent>(events: T[], monthDate: Date): T[] => {
+  const monthStart = startOfMonth(monthDate)
+  const monthEnd = endOfMonth(monthDate)
+  const rangeEnd = addDays(monthEnd, 1)
+  const monthStartTime = monthStart.getTime()
+  const rangeEndTime = rangeEnd.getTime()
+
+  return events.reduce<T[]>((acc, event) => {
+    const eventStartTime = event.start.getTime()
+    const eventEndTime = event.end.getTime()
+
+    if (eventEndTime <= monthStartTime || eventStartTime >= rangeEndTime) {
+      return acc
+    }
+
+    const start = eventStartTime < monthStartTime ? new Date(monthStartTime) : event.start
+    const end = eventEndTime > rangeEndTime ? new Date(rangeEndTime) : event.end
+
+    if (start === event.start && end === event.end) {
+      acc.push(event)
+    } else {
+      acc.push({ ...event, start, end })
+    }
+
+    return acc
+  }, [])
+}
 
 export const MultiMonthCalendar = ({
   events,
@@ -50,7 +78,7 @@ export const MultiMonthCalendar = ({
             <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
             <Calendar<CalendarEvent>
               localizer={localizer}
-              events={events}
+              events={clampEventsToMonth(events, date)}
               startAccessor="start"
               endAccessor="end"
               messages={messages}

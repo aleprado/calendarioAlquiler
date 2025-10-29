@@ -47,6 +47,10 @@ const propertyUpdateSchema = z.object({
   regenerateSlug: z.boolean().optional(),
 })
 
+const propertyJoinSchema = z.object({
+  code: z.string().min(1, 'El código es obligatorio'),
+})
+
 const eventPayloadSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
   start: z.string().datetime(),
@@ -88,6 +92,21 @@ propertyRouter.post(
     const userId = getUserId(req)
     const property = await propertyService.create(userId, parseResult.data)
     res.status(201).json({ property })
+  }),
+)
+
+propertyRouter.post(
+  '/join',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = propertyJoinSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
+
+    const userId = getUserId(req)
+    const property = await propertyService.joinByShareCode(userId, parseResult.data.code)
+    res.json({ property })
   }),
 )
 

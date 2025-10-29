@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
-import { listProperties, createProperty, updateProperty } from '../api/properties'
+import { listProperties, createProperty, updateProperty, joinProperty } from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
 
@@ -20,13 +20,17 @@ export const DashboardPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createForm, setCreateForm] = useState(INITIAL_FORM)
-  const [copied, setCopied] = useState(false)
+  const [copyFeedback, setCopyFeedback] = useState<'link' | 'code' | null>(null)
   const [isPropertyMenuOpen, setIsPropertyMenuOpen] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editForm, setEditForm] = useState(INITIAL_FORM)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
+  const [joinCode, setJoinCode] = useState('')
+  const [isJoining, setIsJoining] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   const loadProperties = useCallback(async () => {
     setLoading(true)
@@ -89,11 +93,65 @@ export const DashboardPage = () => {
     if (!selectedProperty) return
     try {
       await navigator.clipboard.writeText(getPublicUrl(selectedProperty))
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
+      setCopyFeedback('link')
+      window.setTimeout(() => setCopyFeedback(null), 2000)
       setIsPropertyMenuOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo copiar el link. Copialo manualmente.')
+    }
+  }
+
+  const handleCopyShareCode = async () => {
+    if (!selectedProperty) return
+    try {
+      await navigator.clipboard.writeText(selectedProperty.shareCode)
+      setCopyFeedback('code')
+      window.setTimeout(() => setCopyFeedback(null), 2000)
+      setIsPropertyMenuOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo copiar el código. Copialo manualmente.')
+    }
+  }
+
+  const openJoinModal = () => {
+    setJoinCode('')
+    setJoinError(null)
+    setIsJoinModalOpen(true)
+  }
+
+  const closeJoinModal = () => {
+    if (isJoining) return
+    setIsJoinModalOpen(false)
+    setJoinError(null)
+    setJoinCode('')
+  }
+
+  const handleJoinProperty = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const normalizedCode = joinCode.trim()
+    if (!normalizedCode) {
+      setJoinError('Necesitas ingresar un código.')
+      return
+    }
+
+    setIsJoining(true)
+    setJoinError(null)
+    try {
+      const joined = await joinProperty({ code: normalizedCode })
+      setProperties((prev) => {
+        const exists = prev.some((property) => property.id === joined.id)
+        if (exists) {
+          return prev.map((property) => (property.id === joined.id ? joined : property))
+        }
+        return [...prev, joined]
+      })
+      setSelectedPropertyId(joined.id)
+      setIsJoinModalOpen(false)
+      setJoinCode('')
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : 'No se pudo unir la propiedad con ese código.')
+    } finally {
+      setIsJoining(false)
     }
   }
 
@@ -196,6 +254,9 @@ export const DashboardPage = () => {
                     <button type="button" className="property-menu__item" onClick={handleCopyPublicLink}>
                       Copiar link público
                     </button>
+                    <button type="button" className="property-menu__item" onClick={handleCopyShareCode}>
+                      Copiar código de acceso
+                    </button>
                     <button
                       type="button"
                       className="property-menu__item"
@@ -206,8 +267,20 @@ export const DashboardPage = () => {
                     >
                       Editar propiedad
                     </button>
+                    <button
+                      type="button"
+                      className="property-menu__item"
+                      onClick={() => {
+                        setIsPropertyMenuOpen(false)
+                        openJoinModal()
+                      }}
+                    >
+                      Agregar propiedad con código
+                    </button>
                   </div>
-                  {copied && <div className="menu-hint">¡Link copiado!</div>}
+                  {copyFeedback && (
+                    <div className="menu-hint">{copyFeedback === 'link' ? '¡Link copiado!' : '¡Código copiado!'}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -254,6 +327,9 @@ export const DashboardPage = () => {
                 {isCreating ? 'Guardando...' : 'Guardar propiedad'}
               </button>
             </form>
+            <button type="button" className="link-button" onClick={openJoinModal}>
+              Tengo un código de acceso
+            </button>
           </section>
         ) : (
           selectedProperty ? <PropertyWorkspace property={selectedProperty} /> : null
@@ -326,6 +402,39 @@ export const DashboardPage = () => {
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={() => setIsEditModalOpen(false)} disabled={isSavingEdit}>
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isJoinModalOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="join-property-title">
+            <h2 id="join-property-title">Agregar propiedad con código</h2>
+            <form className="modal-form" onSubmit={handleJoinProperty}>
+              <label htmlFor="join-code">Código de acceso</label>
+              <input
+                id="join-code"
+                type="text"
+                value={joinCode}
+                onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                placeholder="ABCD1234"
+                autoFocus
+                required
+              />
+              <button type="submit" className="primary" disabled={isJoining}>
+                {isJoining ? 'Agregando...' : 'Agregar propiedad'}
+              </button>
+              {joinError && (
+                <div className="alert alert--inline" role="alert">
+                  <span>{joinError}</span>
+                </div>
+              )}
+            </form>
+            <div className="modal-actions">
+              <button type="button" className="secondary" onClick={closeJoinModal} disabled={isJoining}>
+                Cancelar
               </button>
             </div>
           </div>

@@ -49,6 +49,8 @@ export interface PropertyDTO {
   name: string
   airbnbIcalUrl: string
   publicSlug: string
+  shareCode: string
+  memberIds: string[]
   createdAt: string
   updatedAt: string
 }
@@ -62,6 +64,10 @@ export interface UpdatePropertyPayload {
   name?: string
   airbnbIcalUrl?: string
   regenerateSlug?: boolean
+}
+
+export interface JoinPropertyPayload {
+  code: string
 }
 
 export interface PublicEventDTO {

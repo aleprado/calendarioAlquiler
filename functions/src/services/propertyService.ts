@@ -14,8 +14,22 @@ export interface UpdatePropertyPayload {
 }
 
 export class PropertyService {
+  private assertAccess(userId: string, property: PropertyRecord | null): PropertyRecord {
+    if (!property) {
+      throw new ServiceError('Propiedad no encontrada', 404)
+    }
+
+    const memberIds = Array.isArray(property.memberIds) ? property.memberIds : []
+    const isMember = memberIds.includes(userId) || property.ownerId === userId
+    if (!isMember) {
+      throw new ServiceError('Propiedad no encontrada', 404)
+    }
+
+    return property
+  }
+
   async listForUser(userId: string): Promise<PropertyRecord[]> {
-    return await propertyRepository.listByOwner(userId)
+    return await propertyRepository.listByMember(userId)
   }
 
   async create(userId: string, payload: CreatePropertyPayload): Promise<PropertyRecord> {
@@ -35,10 +49,7 @@ export class PropertyService {
   }
 
   async update(userId: string, propertyId: string, payload: UpdatePropertyPayload): Promise<PropertyRecord> {
-    const property = await propertyRepository.getById(propertyId)
-    if (!property || property.ownerId !== userId) {
-      throw new ServiceError('Propiedad no encontrada', 404)
-    }
+    const property = this.assertAccess(userId, await propertyRepository.getById(propertyId))
 
     return await propertyRepository.update(propertyId, {
       name: payload.name,
@@ -48,11 +59,25 @@ export class PropertyService {
   }
 
   async getOwnedProperty(userId: string, propertyId: string): Promise<PropertyRecord> {
-    const property = await propertyRepository.getById(propertyId)
-    if (!property || property.ownerId !== userId) {
-      throw new ServiceError('Propiedad no encontrada', 404)
+    return this.assertAccess(userId, await propertyRepository.getById(propertyId))
+  }
+
+  async joinByShareCode(userId: string, shareCode: string): Promise<PropertyRecord> {
+    const normalizedCode = shareCode.trim().toUpperCase()
+    if (!normalizedCode) {
+      throw new ServiceError('El código de acceso es obligatorio')
     }
-    return property
+
+    const property = await propertyRepository.getByShareCode(normalizedCode)
+    if (!property) {
+      throw new ServiceError('El código ingresado no es válido.', 404)
+    }
+
+    if (property.memberIds.includes(userId) || property.ownerId === userId) {
+      return property
+    }
+
+    return await propertyRepository.addMember(property.id, userId)
   }
 
   async findByPublicSlug(slug: string): Promise<PropertyRecord | null> {
