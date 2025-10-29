@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { downloadIcs, parseAirbnbIcs } from '../airbnb'
 import type { AirbnbCalendarEvent } from '../types'
 import {
@@ -7,7 +8,9 @@ import {
   type EventStatus,
   type PersistedEvent,
 } from '../repositories/eventRepository'
+import { sendReservationRequestEmail } from './emailService'
 import { propertyService } from './propertyService'
+import { getEmailsForUserIds } from './userService'
 import { ServiceError } from '../utils/errors'
 
 const blockingStatuses: EventStatus[] = ['confirmed', 'pending', 'tentative']
@@ -102,9 +105,30 @@ export class EventService {
       throw new ServiceError('La propiedad no existe.', 404)
     }
 
+    const requestedRange = parseIsoRange(payload.start, payload.end)
     await this.ensureAvailability(property.id, payload.start, payload.end)
 
-    return await eventRepository.createPublicRequest(property.id, payload)
+    const event = await eventRepository.createPublicRequest(property.id, payload)
+
+    const memberEmails = await getEmailsForUserIds(property.memberIds ?? [])
+    const recipients = [...memberEmails]
+    if (payload.requesterEmail) {
+      recipients.push(payload.requesterEmail)
+    }
+
+    const formattedStart = format(requestedRange.start, 'dd/MM/yyyy')
+    const formattedEnd = format(requestedRange.end, 'dd/MM/yyyy')
+    await sendReservationRequestEmail({
+      to: recipients,
+      propertyName: property.name,
+      requesterName: payload.requesterName,
+      requesterEmail: payload.requesterEmail,
+      requesterPhone: payload.requesterPhone,
+      start: formattedStart,
+      end: formattedEnd,
+    })
+
+    return event
   }
 
   async getPublicAvailability(publicSlug: string): Promise<PublicAvailabilityPayload | null> {

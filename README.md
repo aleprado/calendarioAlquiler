@@ -87,6 +87,8 @@ El output `calendar_api_uri` devuelve la URL pública de la Cloud Function.
 | `GCP_PROJECT_ID` | Proyecto de GCP donde se desplegará todo. |
 | `GCP_FUNCTION_BASIC_AUTH_USER` | Usuario para la autenticación básica. |
 | `GCP_FUNCTION_BASIC_AUTH_PASSWORD` | Contraseña para la autenticación básica. |
+| `SENDGRID_API_KEY` | Clave de API para SendGrid (notificaciones por correo). |
+| `NOTIFY_FROM_EMAIL` | Dirección remitente verificada en SendGrid. |
 
 > ⚠️ Por simplicidad el workflow lee el archivo `calendarioalquiler-60e74-231618c6a9bb.json` del repositorio. Evita exponerlo en repos públicos; lo ideal es mantenerlo fuera del control de versiones y cargarlo como secret en GitHub.
 

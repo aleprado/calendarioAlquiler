@@ -24,6 +24,15 @@ npm run dev
 
 La ejecución local levanta `functions-framework` escuchando en `localhost:8080` y exponiendo la función `syncAirbnbCalendar`.
 
+## Variables de entorno
+
+Configura las siguientes variables antes de desplegar (o mediante secretos en GitHub Actions):
+
+- `SENDGRID_API_KEY`: API key generada en SendGrid para habilitar el envío de correos.
+- `NOTIFY_FROM_EMAIL`: dirección remitente verificada en SendGrid.
+
+Si no se proveen `SENDGRID_API_KEY` o `NOTIFY_FROM_EMAIL`, las notificaciones por correo se omiten automáticamente.
+
 ## Deploy manual (ejemplo)
 
 ```bash
