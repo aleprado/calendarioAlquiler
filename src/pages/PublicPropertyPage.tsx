@@ -30,17 +30,31 @@ const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const toUtcDateKey = (date: Date) => date.toISOString().slice(0, 10)
 
-const toUtcMidnight = (date: Date) => Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+const toLocalMidnight = (date: Date) => new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+
+const ensureEndAfterStart = (start: Date, end: Date) => {
+  if (end <= start) {
+    return new Date(start.getTime() + MS_IN_DAY)
+  }
+  return end
+}
 
 const toCalendarEvents = (data: PublicAvailabilityDTO): CalendarEvent[] =>
-  data.events.map((item, index) => ({
-    id: `${data.propertyId}-${index}`,
-    title: '',
-    start: new Date(item.start),
-    end: new Date(item.end),
-    source: 'public',
-    status: item.status === 'pending' ? 'pending' : 'confirmed',
-  }))
+  data.events.map((item, index) => {
+    const rawStart = new Date(item.start)
+    const rawEnd = new Date(item.end)
+    const start = toLocalMidnight(rawStart)
+    const end = ensureEndAfterStart(start, toLocalMidnight(rawEnd))
+
+    return {
+      id: `${data.propertyId}-${index}`,
+      title: '',
+      start,
+      end,
+      source: 'public',
+      status: item.status === 'pending' ? 'pending' : 'confirmed',
+    }
+  })
 
 const rangesOverlap = (a: CalendarEvent, start: Date, end: Date) => {
   const aStart = a.start
@@ -95,26 +109,12 @@ export const PublicPropertyPage = () => {
     const days = new Map<string, 'pending' | 'blocked'>()
 
     events.forEach((event) => {
-      const startUtc = toUtcMidnight(event.start)
-      const effectiveEnd = event.end <= event.start ? new Date(event.start.getTime() + 1) : event.end
-
-      let endUtcExclusive = toUtcMidnight(effectiveEnd)
-      const endHasTimeComponent =
-        effectiveEnd.getUTCHours() !== 0 ||
-        effectiveEnd.getUTCMinutes() !== 0 ||
-        effectiveEnd.getUTCSeconds() !== 0 ||
-        effectiveEnd.getUTCMilliseconds() !== 0
-      if (endHasTimeComponent) {
-        endUtcExclusive += MS_IN_DAY
-      }
-      if (endUtcExclusive <= startUtc) {
-        endUtcExclusive = startUtc + MS_IN_DAY
-      }
-
+      const start = toLocalMidnight(event.start)
+      const endExclusive = ensureEndAfterStart(start, toLocalMidnight(event.end))
       const status = event.status === 'pending' ? 'pending' : 'blocked'
 
-      for (let cursor = startUtc; cursor < endUtcExclusive; cursor += MS_IN_DAY) {
-        const key = toUtcDateKey(new Date(cursor))
+      for (let cursor = start; cursor < endExclusive; cursor = new Date(cursor.getTime() + MS_IN_DAY)) {
+        const key = toUtcDateKey(cursor)
         if (status === 'blocked') {
           days.set(key, 'blocked')
         } else if (!days.has(key)) {

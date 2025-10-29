@@ -15,6 +15,9 @@ const toLocalMidnightFromKey = (key: string) => {
   const [year, month, day] = key.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
+
+const toLocalMidnight = (date: Date) => new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+
 const normRange = (ev: CalendarEvent) => {
   const s = startOfDayLocal(ev.start)
   const e0 = startOfDayLocal(ev.end)
@@ -59,16 +62,15 @@ const normalizeEventDates = (
   start: Date,
   end: Date,
 ): { start: Date; end: Date } => {
-  if (source !== 'airbnb') {
-    return { start, end }
+  const adjustedStart =
+    source === 'airbnb' && isUtcMidnight(start) ? toLocalMidnightFromKey(toUtcDateKey(start)) : toLocalMidnight(start)
+  let adjustedEnd =
+    source === 'airbnb' && isUtcMidnight(end) ? toLocalMidnightFromKey(toUtcDateKey(end)) : toLocalMidnight(end)
+
+  if (adjustedEnd <= adjustedStart) {
+    adjustedEnd = addDays(adjustedStart, 1)
   }
 
-  if (!isUtcMidnight(start) || !isUtcMidnight(end)) {
-    return { start, end }
-  }
-
-  const adjustedStart = toLocalMidnightFromKey(toUtcDateKey(start))
-  const adjustedEnd = toLocalMidnightFromKey(toUtcDateKey(end))
   return { start: adjustedStart, end: adjustedEnd }
 }
 
