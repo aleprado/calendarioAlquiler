@@ -684,6 +684,28 @@ body {
   transition: transform 0.1s ease;
 }
 
+.multi-month-calendar .rbc-event-continues-prior::before,
+.multi-month-calendar .rbc-event-continues-after::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.multi-month-calendar .rbc-event-continues-prior::before {
+  left: -0.4rem;
+}
+
+.multi-month-calendar .rbc-event-continues-after::after {
+  right: -0.4rem;
+}
+
 .multi-month-calendar .rbc-event:hover {
   transform: translateY(-1px);
 }
