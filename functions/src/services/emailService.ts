@@ -29,20 +29,20 @@ const hasValidConfig = () => {
   return true
 }
 
-export const sendReservationRequestEmail = async (payload: ReservationNotificationPayload): Promise<void> => {
+export const sendReservationRequestEmail = async (payload: ReservationNotificationPayload): Promise<boolean> => {
   if (!hasValidConfig()) {
-    return
+    return false
   }
 
   if (!Array.isArray(payload.to) || payload.to.length === 0) {
     console.warn('[emailService] No hay destinatarios para la notificación; omitiendo envío.')
-    return
+    return false
   }
 
   const uniqueRecipients = Array.from(new Set(payload.to.filter((email) => !!email)))
   if (uniqueRecipients.length === 0) {
     console.warn('[emailService] Destinatarios inválidos; omitiendo envío.')
-    return
+    return false
   }
 
   const lines = [
@@ -65,7 +65,9 @@ export const sendReservationRequestEmail = async (payload: ReservationNotificati
       subject: `Nueva solicitud de reserva para ${payload.propertyName}`,
       text: lines.join('\n'),
     })
+    return true
   } catch (error) {
     console.error('[emailService] Error al enviar notificación de reserva', error)
+    return false
   }
 }

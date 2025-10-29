@@ -8,9 +8,10 @@ export const fetchPublicAvailability = async (publicSlug: string): Promise<Publi
 export const submitPublicRequest = async (
   publicSlug: string,
   payload: NewPublicRequestPayload,
-): Promise<void> => {
-  await apiRequest(`/public/properties/${encodeURIComponent(publicSlug)}/requests`, {
+): Promise<{ notificationSent: boolean }> => {
+  const data = await apiRequest<{ notificationSent: boolean }>(`/public/properties/${encodeURIComponent(publicSlug)}/requests`, {
     method: 'POST',
     json: payload,
   })
+  return { notificationSent: Boolean(data.notificationSent) }
 }

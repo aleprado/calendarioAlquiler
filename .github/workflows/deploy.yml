@@ -45,6 +45,8 @@ jobs:
       - name: Deploy calendar-api (Gen2)
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          NOTIFY_FROM_EMAIL: ${{ secrets.NOTIFY_FROM_EMAIL }}
         run: |
           gcloud functions deploy calendar-api \
             --gen2 \
@@ -55,7 +57,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --service-account="airbnb-calendar-functions@${PROJECT_ID}.iam.gserviceaccount.com" \
-            --set-env-vars="NODE_ENV=production"
+            --set-env-vars="NODE_ENV=production,SENDGRID_API_KEY=${SENDGRID_API_KEY},NOTIFY_FROM_EMAIL=${NOTIFY_FROM_EMAIL}"
 
       - name: Get Function URL
         id: fn_url

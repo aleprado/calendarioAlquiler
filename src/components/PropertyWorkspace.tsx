@@ -161,7 +161,7 @@ const getEventStyle = (event: ViewEvent) => {
 
   if (event.source === 'public' && !behavesAsManual(event)) {
     if (event.status === 'pending') {
-      const color = '#fb923c'
+      const color = '#22c55e'
       return { backgroundColor: color, borderColor: color, color: '#ffffff' }
     }
     if (event.status === 'declined') {

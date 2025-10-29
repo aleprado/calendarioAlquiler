@@ -56,6 +56,11 @@ export interface PublicAvailabilityPayload {
   events: Array<{ start: string; end: string; status: string }>
 }
 
+export interface PublicRequestResult {
+  event: PersistedEvent
+  notificationSent: boolean
+}
+
 export class EventService {
   async listForUser(userId: string, propertyId: string): Promise<PersistedEvent[]> {
     await propertyService.getOwnedProperty(userId, propertyId)
@@ -99,7 +104,7 @@ export class EventService {
     }
   }
 
-  async createPublicRequest(publicSlug: string, payload: CreatePublicRequestInput) {
+  async createPublicRequest(publicSlug: string, payload: CreatePublicRequestInput): Promise<PublicRequestResult> {
     const property = await propertyService.findByPublicSlug(publicSlug)
     if (!property) {
       throw new ServiceError('La propiedad no existe.', 404)
@@ -118,7 +123,7 @@ export class EventService {
 
     const formattedStart = format(requestedRange.start, 'dd/MM/yyyy')
     const formattedEnd = format(requestedRange.end, 'dd/MM/yyyy')
-    await sendReservationRequestEmail({
+    const notificationSent = await sendReservationRequestEmail({
       to: recipients,
       propertyName: property.name,
       requesterName: payload.requesterName,
@@ -128,7 +133,7 @@ export class EventService {
       end: formattedEnd,
     })
 
-    return event
+    return { event, notificationSent }
   }
 
   async getPublicAvailability(publicSlug: string): Promise<PublicAvailabilityPayload | null> {

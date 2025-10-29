@@ -225,8 +225,8 @@ publicRouter.post(
       return
     }
 
-    const event = await eventService.createPublicRequest(req.params.publicSlug, parseResult.data)
-    res.status(201).json({ event })
+    const result = await eventService.createPublicRequest(req.params.publicSlug, parseResult.data)
+    res.status(201).json({ event: result.event, notificationSent: result.notificationSent })
   }),
 )
 

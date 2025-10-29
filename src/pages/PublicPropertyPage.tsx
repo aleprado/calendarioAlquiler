@@ -74,7 +74,6 @@ export const PublicPropertyPage = () => {
   const loadAvailability = useCallback(async () => {
     if (!publicSlug) return
     setIsLoading(true)
-    setFeedback(null)
     setError(null)
     try {
       const payload = await fetchPublicAvailability(publicSlug)
@@ -92,8 +91,8 @@ export const PublicPropertyPage = () => {
 
   const events = useMemo(() => (data ? toCalendarEvents(data) : []), [data])
 
-  const blockedDays = useMemo(() => {
-    const days = new Set<string>()
+  const dayStatuses = useMemo(() => {
+    const days = new Map<string, 'pending' | 'blocked'>()
 
     events.forEach((event) => {
       // Work in UTC to avoid local timezone offsets shifting blocked days earlier.
@@ -110,12 +109,23 @@ export const PublicPropertyPage = () => {
       const endUtc = toUtcMidnight(end)
 
       if (endUtc < startUtc) {
-        days.add(toUtcDateKey(event.start))
+        const key = toUtcDateKey(event.start)
+        const status = event.status === 'pending' ? 'pending' : 'blocked'
+        if (status === 'blocked' || !days.has(key)) {
+          days.set(key, status)
+        }
         return
       }
 
+      const status = event.status === 'pending' ? 'pending' : 'blocked'
+
       for (let cursor = startUtc; cursor <= endUtc; cursor += MS_IN_DAY) {
-        days.add(toUtcDateKey(new Date(cursor)))
+        const key = toUtcDateKey(new Date(cursor))
+        if (status === 'blocked') {
+          days.set(key, 'blocked')
+        } else if (!days.has(key)) {
+          days.set(key, 'pending')
+        }
       }
     })
 
@@ -125,12 +135,16 @@ export const PublicPropertyPage = () => {
   const dayPropGetter = useCallback(
     (date: Date) => {
       const key = toUtcDateKey(date)
-      if (blockedDays.has(key)) {
+      const status = dayStatuses.get(key)
+      if (status === 'pending') {
+        return { className: 'calendar-day--pending' }
+      }
+      if (status === 'blocked') {
         return { className: 'calendar-day--blocked' }
       }
       return {}
     },
-    [blockedDays],
+    [dayStatuses],
   )
 
   const renderPublicMonthEvent = useCallback(() => <span aria-hidden="true" />, [])
@@ -169,7 +183,7 @@ export const PublicPropertyPage = () => {
     setIsSubmitting(true)
     setModalError(null)
     try {
-      await submitPublicRequest(data.publicSlug, {
+      const response = await submitPublicRequest(data.publicSlug, {
         start: pendingRange.start.toISOString(),
         end: pendingRange.end.toISOString(),
         requesterName: payload.name,
@@ -177,7 +191,12 @@ export const PublicPropertyPage = () => {
         requesterPhone: payload.phone,
         notes: payload.notes,
       })
-      setFeedback('Enviamos tu solicitud. Te contactaremos a la brevedad.')
+      const notificationSent = response.notificationSent
+      setFeedback(
+        notificationSent
+          ? 'Tu solicitud quedó pendiente y avisamos al anfitrión por correo. Te contactarán a la brevedad.'
+          : 'Tu solicitud quedó pendiente. Comunícate con el anfitrión para que sepa que enviaste la reserva.',
+      )
       handleCloseModal()
       await loadAvailability()
     } catch (err) {
