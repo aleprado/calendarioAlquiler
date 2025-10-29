@@ -1,4 +1,4 @@
-import type { DocumentReference } from '@google-cloud/firestore'
+import { FieldValue, type DocumentReference } from '@google-cloud/firestore'
 import { firestore, propertiesCollection } from '../firestore'
 
 export interface PropertyRecord {
@@ -173,7 +173,7 @@ export class PropertyRepository {
     const shareCode = this.ensureShareCode(existing.shareCode)
     await docRef.set(
       {
-        memberIds: firestore.FieldValue.arrayUnion(userId),
+        memberIds: FieldValue.arrayUnion(userId),
         shareCode,
       },
       { merge: true },

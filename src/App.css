@@ -582,12 +582,22 @@ body {
   grid-template-columns: 1fr;
   flex: 1;
   min-height: 0;
-  grid-auto-rows: minmax(520px, auto);
+  grid-auto-rows: minmax(560px, auto);
 }
 
 @media (min-width: 768px) {
   .multi-month-calendar__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .multi-month-calendar__grid {
+    grid-auto-rows: minmax(clamp(600px, 70vh, 820px), auto);
+  }
+
+  .multi-month-calendar__cell:nth-child(-n + 2) {
+    min-height: max(640px, calc(100vh - 12rem));
   }
 }
 
