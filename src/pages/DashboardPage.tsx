@@ -209,16 +209,29 @@ export const DashboardPage = () => {
     <div className="dashboard-layout">
       <header className="dashboard-topbar">
         <div className="topbar-left">
-          <div className="brand-badge" aria-label="Simple Alquiler">
-            <span>SA</span>
-          </div>
-          <button type="button" className="link-button" onClick={() => setIsInfoOpen(true)}>
+          <img src="/logo.png" alt="Simple Alquiler" className="brand-logo" />
+          <button type="button" className="link-button topbar-info-link" onClick={() => setIsInfoOpen(true)}>
             Conoce la app
           </button>
         </div>
         <div className="topbar-right">
-          <button type="button" className="link-button" onClick={() => void signOut()}>
-            Cerrar sesión
+          <button type="button" className="link-button sign-out-button" onClick={() => void signOut()} aria-label="Cerrar sesión">
+            <svg
+              className="sign-out-button__icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
+              <path d="M18 12H9" />
+              <path d="m15 9 3 3-3 3" />
+            </svg>
+            <span className="sign-out-button__label">Cerrar sesión</span>
           </button>
           <div className="user-info">
             {user?.photoURL ? (
