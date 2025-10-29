@@ -95,31 +95,25 @@ export const PublicPropertyPage = () => {
     const days = new Map<string, 'pending' | 'blocked'>()
 
     events.forEach((event) => {
-      // Work in UTC to avoid local timezone offsets shifting blocked days earlier.
       const startUtc = toUtcMidnight(event.start)
-      let end = event.end <= event.start ? event.start : event.end
+      const effectiveEnd = event.end <= event.start ? new Date(event.start.getTime() + 1) : event.end
 
-      const endIsUtcMidnight =
-        end.getUTCHours() === 0 && end.getUTCMinutes() === 0 && end.getUTCSeconds() === 0 && end.getUTCMilliseconds() === 0
-
-      if (endIsUtcMidnight && end > event.start) {
-        end = new Date(end.getTime() - 1)
+      let endUtcExclusive = toUtcMidnight(effectiveEnd)
+      const endHasTimeComponent =
+        effectiveEnd.getUTCHours() !== 0 ||
+        effectiveEnd.getUTCMinutes() !== 0 ||
+        effectiveEnd.getUTCSeconds() !== 0 ||
+        effectiveEnd.getUTCMilliseconds() !== 0
+      if (endHasTimeComponent) {
+        endUtcExclusive += MS_IN_DAY
       }
-
-      const endUtc = toUtcMidnight(end)
-
-      if (endUtc < startUtc) {
-        const key = toUtcDateKey(event.start)
-        const status = event.status === 'pending' ? 'pending' : 'blocked'
-        if (status === 'blocked' || !days.has(key)) {
-          days.set(key, status)
-        }
-        return
+      if (endUtcExclusive <= startUtc) {
+        endUtcExclusive = startUtc + MS_IN_DAY
       }
 
       const status = event.status === 'pending' ? 'pending' : 'blocked'
 
-      for (let cursor = startUtc; cursor <= endUtc; cursor += MS_IN_DAY) {
+      for (let cursor = startUtc; cursor < endUtcExclusive; cursor += MS_IN_DAY) {
         const key = toUtcDateKey(new Date(cursor))
         if (status === 'blocked') {
           days.set(key, 'blocked')
@@ -147,15 +141,12 @@ export const PublicPropertyPage = () => {
     [dayStatuses],
   )
 
-  const renderPublicMonthEvent = useCallback(
-    ({ continuesPrior, monthDate, slotStart }: MonthEventComponentProps) => {
-      if (continuesPrior && slotStart.getMonth() !== monthDate.getMonth()) {
-        return <span aria-hidden="true" />
-      }
+  const renderPublicMonthEvent = useCallback(({ monthDate, slotStart }: MonthEventComponentProps) => {
+    if (!slotStart || slotStart.getMonth() !== monthDate.getMonth()) {
       return <span aria-hidden="true" />
-    },
-    [],
-  )
+    }
+    return <span aria-hidden="true" />
+  }, [])
 
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {

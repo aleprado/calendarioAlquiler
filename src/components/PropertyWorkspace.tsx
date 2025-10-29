@@ -116,7 +116,7 @@ const calendarMessages = {
 type MonthEventProps = MonthEventComponentProps & EventProps<ViewEvent>
 
 const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior, monthDate, slotStart }) => {
-  if (continuesPrior && slotStart.getMonth() !== monthDate.getMonth()) {
+  if (!slotStart || slotStart.getMonth() !== monthDate.getMonth()) {
     return <span />
   }
 
