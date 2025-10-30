@@ -10,7 +10,12 @@ const getPublicUrl = (property: PropertyDTO) => {
   return `${origin}/public/${property.publicSlug}`
 }
 
-const INITIAL_FORM = { name: '', airbnbIcalUrl: '' }
+const INITIAL_FORM = {
+  name: '',
+  airbnbIcalUrl: '',
+  instagramUrl: '',
+  googlePhotosUrl: '',
+}
 
 export const DashboardPage = () => {
   const { user, signOut } = useAuth()
@@ -65,7 +70,12 @@ export const DashboardPage = () => {
 
   useEffect(() => {
     if (selectedProperty) {
-      setEditForm({ name: selectedProperty.name, airbnbIcalUrl: selectedProperty.airbnbIcalUrl })
+      setEditForm({
+        name: selectedProperty.name,
+        airbnbIcalUrl: selectedProperty.airbnbIcalUrl,
+        instagramUrl: selectedProperty.instagramUrl ?? '',
+        googlePhotosUrl: selectedProperty.googlePhotosUrl ?? '',
+      })
       setEditError(null)
     }
   }, [selectedProperty])
@@ -75,10 +85,15 @@ export const DashboardPage = () => {
     setIsCreating(true)
     setError(null)
     try {
-      const created = await createProperty({
+      const trimmedInstagramUrl = createForm.instagramUrl.trim()
+      const trimmedGoogleUrl = createForm.googlePhotosUrl.trim()
+      const payload = {
         name: createForm.name.trim(),
         airbnbIcalUrl: createForm.airbnbIcalUrl.trim(),
-      })
+        ...(trimmedInstagramUrl ? { instagramUrl: trimmedInstagramUrl } : {}),
+        ...(trimmedGoogleUrl ? { googlePhotosUrl: trimmedGoogleUrl } : {}),
+      }
+      const created = await createProperty(payload)
       setProperties((prev) => [...prev, created])
       setSelectedPropertyId(created.id)
       setCreateForm(INITIAL_FORM)
@@ -161,9 +176,13 @@ export const DashboardPage = () => {
     setIsSavingEdit(true)
     setEditError(null)
     try {
+      const trimmedInstagramUrl = editForm.instagramUrl.trim()
+      const trimmedGoogleUrl = editForm.googlePhotosUrl.trim()
       const updated = await updateProperty(selectedProperty.id, {
         name: editForm.name.trim(),
         airbnbIcalUrl: editForm.airbnbIcalUrl.trim(),
+        instagramUrl: trimmedInstagramUrl ? trimmedInstagramUrl : null,
+        googlePhotosUrl: trimmedGoogleUrl ? trimmedGoogleUrl : null,
       })
       setProperties((prev) => prev.map((property) => (property.id === updated.id ? updated : property)))
       setIsEditModalOpen(false)
@@ -335,6 +354,22 @@ export const DashboardPage = () => {
                 placeholder="https://www.airbnb.com/calendar/ical/..."
                 required
               />
+              <label htmlFor="property-instagram-link">Instagram (URL opcional)</label>
+              <input
+                id="property-instagram-link"
+                type="url"
+                value={createForm.instagramUrl}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
+                placeholder="https://instagram.com/tu_cuenta"
+              />
+              <label htmlFor="property-google-photos-link">Google Fotos (URL opcional)</label>
+              <input
+                id="property-google-photos-link"
+                type="url"
+                value={createForm.googlePhotosUrl}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))}
+                placeholder="https://photos.app.goo.gl/tu_album"
+              />
               <button type="submit" className="primary" disabled={isCreating}>
                 {isCreating ? 'Guardando...' : 'Guardar propiedad'}
               </button>
@@ -390,6 +425,22 @@ export const DashboardPage = () => {
                 value={editForm.airbnbIcalUrl}
                 onChange={(event) => setEditForm((prev) => ({ ...prev, airbnbIcalUrl: event.target.value }))}
                 required
+              />
+              <label htmlFor="edit-instagram-link">Instagram (URL opcional)</label>
+              <input
+                id="edit-instagram-link"
+                type="url"
+                value={editForm.instagramUrl}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
+                placeholder="https://instagram.com/tu_cuenta"
+              />
+              <label htmlFor="edit-google-photos-link">Google Fotos (URL opcional)</label>
+              <input
+                id="edit-google-photos-link"
+                type="url"
+                value={editForm.googlePhotosUrl}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))}
+                placeholder="https://photos.app.goo.gl/tu_album"
               />
               <div className="edit-actions">
                 <button type="submit" className="primary" disabled={isSavingEdit}>

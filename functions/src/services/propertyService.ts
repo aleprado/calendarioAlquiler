@@ -5,12 +5,23 @@ import { ServiceError } from '../utils/errors'
 export interface CreatePropertyPayload {
   name: string
   airbnbIcalUrl: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
 }
 
 export interface UpdatePropertyPayload {
   name?: string
   airbnbIcalUrl?: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
   regenerateSlug?: boolean
+}
+
+const sanitizeOptionalUrl = (value?: string | null) => {
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
 }
 
 export class PropertyService {
@@ -45,6 +56,8 @@ export class PropertyService {
       ownerId: userId,
       name: payload.name.trim(),
       airbnbIcalUrl: payload.airbnbIcalUrl.trim(),
+      instagramUrl: sanitizeOptionalUrl(payload.instagramUrl) ?? null,
+      googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl) ?? null,
     })
   }
 
@@ -54,6 +67,8 @@ export class PropertyService {
     return await propertyRepository.update(propertyId, {
       name: payload.name,
       airbnbIcalUrl: payload.airbnbIcalUrl,
+      instagramUrl: sanitizeOptionalUrl(payload.instagramUrl),
+      googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl),
       regenerateSlug: payload.regenerateSlug,
     })
   }

@@ -53,6 +53,8 @@ export interface PublicAvailabilityPayload {
   propertyId: string
   propertyName: string
   publicSlug: string
+  instagramUrl: string | null
+  googlePhotosUrl: string | null
   events: Array<{ start: string; end: string; status: string }>
 }
 
@@ -153,6 +155,8 @@ export class EventService {
       propertyId: property.id,
       propertyName: property.name,
       publicSlug: property.publicSlug,
+      instagramUrl: property.instagramUrl ?? null,
+      googlePhotosUrl: property.googlePhotosUrl ?? null,
       events: sanitized,
     }
   }

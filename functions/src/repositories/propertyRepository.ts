@@ -1,6 +1,12 @@
 import { FieldValue, type DocumentReference } from '@google-cloud/firestore'
 import { propertiesCollection } from '../firestore'
 
+const normalizeOptionalString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 export interface PropertyRecord {
   id: string
   ownerId: string
@@ -11,17 +17,23 @@ export interface PropertyRecord {
   memberIds: string[]
   createdAt: string
   updatedAt: string
+  instagramUrl: string | null
+  googlePhotosUrl: string | null
 }
 
 export interface CreatePropertyInput {
   ownerId: string
   name: string
   airbnbIcalUrl: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
 }
 
 export interface UpdatePropertyInput {
   name?: string
   airbnbIcalUrl?: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
   regenerateSlug?: boolean
 }
 
@@ -45,6 +57,8 @@ export class PropertyRepository {
       memberIds,
       createdAt: data.createdAt ?? '',
       updatedAt: data.updatedAt ?? '',
+      instagramUrl: normalizeOptionalString((data as Record<string, unknown>).instagramUrl),
+      googlePhotosUrl: normalizeOptionalString((data as Record<string, unknown>).googlePhotosUrl),
     }
   }
 
@@ -130,6 +144,8 @@ export class PropertyRepository {
       memberIds: [input.ownerId],
       createdAt: now,
       updatedAt: now,
+      instagramUrl: normalizeOptionalString(input.instagramUrl),
+      googlePhotosUrl: normalizeOptionalString(input.googlePhotosUrl),
     }
 
     await docRef.set(payload)
@@ -148,6 +164,12 @@ export class PropertyRepository {
     const payload: Partial<PropertyRecord> = {
       ...(updates.name !== undefined ? { name: updates.name } : {}),
       ...(updates.airbnbIcalUrl !== undefined ? { airbnbIcalUrl: updates.airbnbIcalUrl } : {}),
+      ...(updates.instagramUrl !== undefined
+        ? { instagramUrl: normalizeOptionalString(updates.instagramUrl) }
+        : {}),
+      ...(updates.googlePhotosUrl !== undefined
+        ? { googlePhotosUrl: normalizeOptionalString(updates.googlePhotosUrl) }
+        : {}),
       updatedAt: now,
     }
 

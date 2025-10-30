@@ -53,16 +53,22 @@ export interface PropertyDTO {
   memberIds: string[]
   createdAt: string
   updatedAt: string
+  instagramUrl: string | null
+  googlePhotosUrl: string | null
 }
 
 export interface NewPropertyPayload {
   name: string
   airbnbIcalUrl: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
 }
 
 export interface UpdatePropertyPayload {
   name?: string
   airbnbIcalUrl?: string
+  instagramUrl?: string | null
+  googlePhotosUrl?: string | null
   regenerateSlug?: boolean
 }
 
@@ -80,6 +86,8 @@ export interface PublicAvailabilityDTO {
   propertyId: string
   propertyName: string
   publicSlug: string
+  instagramUrl: string | null
+  googlePhotosUrl: string | null
   events: PublicEventDTO[]
 }
 

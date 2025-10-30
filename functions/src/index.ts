@@ -36,14 +36,20 @@ app.get('/health', (_req, res) => {
 
 /* ==================== Rutas autenticadas ==================== */
 
+const socialLinkSchema = z.union([z.string().trim().url('Debe ser una URL válida'), z.literal(null)])
+
 const propertyPayloadSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida'),
+  instagramUrl: socialLinkSchema.optional(),
+  googlePhotosUrl: socialLinkSchema.optional(),
 })
 
 const propertyUpdateSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio').optional(),
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida').optional(),
+  instagramUrl: socialLinkSchema.optional(),
+  googlePhotosUrl: socialLinkSchema.optional(),
   regenerateSlug: z.boolean().optional(),
 })
 

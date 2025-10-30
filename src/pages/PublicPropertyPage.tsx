@@ -56,6 +56,45 @@ const toCalendarEvents = (data: PublicAvailabilityDTO): CalendarEvent[] =>
     }
   })
 
+const InstagramIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    className="social-icon social-icon--instagram"
+  >
+    <defs>
+      <linearGradient id="igrad" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#f58529" />
+        <stop offset="50%" stopColor="#dd2a7b" />
+        <stop offset="100%" stopColor="#515bd4" />
+      </linearGradient>
+    </defs>
+    <rect width="24" height="24" rx="6" fill="url(#igrad)" />
+    <path
+      d="M12 9.3A2.7 2.7 0 1 0 14.7 12 2.7 2.7 0 0 0 12 9.3Zm0 4.5A1.8 1.8 0 1 1 13.8 12 1.8 1.8 0 0 1 12 13.8Zm3.48-4.86a.63.63 0 1 0-.63-.63.63.63 0 0 0 .63.63ZM16.8 8a3 3 0 0 0-3-3h-3.6a3 3 0 0 0-3 3v3.6a3 3 0 0 0 3 3h3.6a3 3 0 0 0 3-3Zm-1 3.6a2 2 0 0 1-2 2h-3.6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.6a2 2 0 0 1 2 2Z"
+      fill="#fff"
+    />
+  </svg>
+)
+
+const GooglePhotosIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    className="social-icon social-icon--google"
+  >
+    <path d="M12 2a5 5 0 0 1 5 5h-5Z" fill="#ea4335" />
+    <path d="M12 2a5 5 0 0 0-5 5h5Z" fill="#fbbc05" />
+    <path d="M7 7a5 5 0 0 0 5 5V7Z" fill="#34a853" />
+    <path d="M12 12a5 5 0 0 0-5 5h5Z" fill="#4285f4" />
+    <path d="M12 12a5 5 0 0 1 5-5v5Z" fill="#c5221f" />
+    <path d="M12 12a5 5 0 0 1 5 5h-5Z" fill="#0f9d58" />
+    <circle cx="12" cy="12" r="2.2" fill="#fff" />
+  </svg>
+)
+
 const rangesOverlap = (a: CalendarEvent, start: Date, end: Date) => {
   const aStart = a.start
   const aEnd = a.end
@@ -218,6 +257,20 @@ export const PublicPropertyPage = () => {
           <header className="public-header">
             <h1>{data.propertyName}</h1>
             <p>Selecciona fechas disponibles para enviar una solicitud de reserva.</p>
+            {(data.instagramUrl || data.googlePhotosUrl) && (
+              <div className="public-social-logos" aria-label="Redes sociales">
+                {data.instagramUrl && (
+                  <a href={data.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <InstagramIcon />
+                  </a>
+                )}
+                {data.googlePhotosUrl && (
+                  <a href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer" aria-label="Google Fotos">
+                    <GooglePhotosIcon />
+                  </a>
+                )}
+              </div>
+            )}
             {feedback && (
               <div className="alert alert--inline" role="status">
                 <span>{feedback}</span>
