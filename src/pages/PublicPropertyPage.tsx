@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { SlotInfo } from 'react-big-calendar'
 import { useParams } from 'react-router-dom'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from '../components/MultiMonthCalendar'
@@ -122,7 +123,8 @@ export const PublicPropertyPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [isAboutOpen, setIsAboutOpen] = useState(false)
+  const [infoModalVariant, setInfoModalVariant] = useState<'welcome' | 'unavailable' | 'about' | null>(null)
+  const [hasShownWelcome, setHasShownWelcome] = useState(false)
 
   const loadAvailability = useCallback(async () => {
     if (!publicSlug) return
@@ -142,7 +144,40 @@ export const PublicPropertyPage = () => {
     void loadAvailability()
   }, [loadAvailability])
 
+  useEffect(() => {
+    if (data && !hasShownWelcome) {
+      setInfoModalVariant('welcome')
+      setHasShownWelcome(true)
+    }
+  }, [data, hasShownWelcome])
+
   const events = useMemo(() => (data ? toCalendarEvents(data) : []), [data])
+
+  const socialLinksContent = useMemo(() => {
+    if (!data) return null
+    const links: ReactNode[] = []
+    if (data.instagramUrl) {
+      links.push(
+        <a key="instagram" href={data.instagramUrl} target="_blank" rel="noopener noreferrer">
+          Instagram
+        </a>,
+      )
+    }
+    if (data.googlePhotosUrl) {
+      links.push(
+        <a key="google" href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
+          Google Fotos
+        </a>,
+      )
+    }
+    if (links.length === 0) return null
+    if (links.length === 1) return links[0]
+    return (
+      <>
+        {links[0]} y {links[1]}
+      </>
+    )
+  }, [data])
 
   const dayStatuses = useMemo(() => {
     const days = new Map<string, 'pending' | 'blocked'>()
@@ -198,10 +233,12 @@ export const PublicPropertyPage = () => {
 
       const overlapsBlocked = events.some((event) => rangesOverlap(event, start, end) && event.status !== 'declined')
       if (overlapsBlocked) {
-        setFeedback('Las fechas seleccionadas ya no están disponibles.')
+        setFeedback(null)
+        setInfoModalVariant('unavailable')
         return
       }
 
+      setInfoModalVariant((current) => (current === 'unavailable' ? null : current))
       setFeedback(null)
       setPendingRange({ start, end, displayEnd: new Date(displayEndRaw) })
       setModalError(null)
@@ -289,7 +326,7 @@ export const PublicPropertyPage = () => {
             />
           </section>
           <div className="public-footer">
-            <button type="button" className="link-button" onClick={() => setIsAboutOpen(true)}>
+            <button type="button" className="link-button" onClick={() => setInfoModalVariant('about')}>
               Gestiona tus alquileres con SimpleAlquiler.net
             </button>
           </div>
@@ -305,7 +342,38 @@ export const PublicPropertyPage = () => {
         errorMessage={modalError}
       />
 
-      <AboutAppModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+      <AboutAppModal
+        isOpen={infoModalVariant !== null}
+        onClose={() => setInfoModalVariant(null)}
+        title={
+          infoModalVariant === 'welcome'
+            ? 'Cómo usar este calendario'
+            : infoModalVariant === 'unavailable'
+              ? 'Fechas no disponibles'
+              : undefined
+        }
+        primaryLabel={infoModalVariant && infoModalVariant !== 'about' ? 'Entendido' : undefined}
+      >
+        {infoModalVariant === 'welcome' ? (
+          <>
+            <p>
+              Aquí puedes revisar la disponibilidad de {data?.propertyName ?? 'esta propiedad'} y enviar una solicitud de reserva
+              sin iniciar sesión.
+            </p>
+            <p>
+              Selecciona un rango de fechas disponible y completa el formulario para generar una reserva pendiente de validación. El
+              anfitrión revisará la solicitud antes de confirmarla.
+            </p>
+            {socialLinksContent && <p>Mira más detalles y fotos en {socialLinksContent}.</p>}
+          </>
+        ) : null}
+        {infoModalVariant === 'unavailable' ? (
+          <>
+            <p>Las fechas seleccionadas están reservadas o pendientes de confirmación.</p>
+            <p>Elige otro rango disponible y envía la solicitud para generar una reserva pendiente de validación.</p>
+          </>
+        ) : null}
+      </AboutAppModal>
     </div>
   )
 }
