@@ -23,31 +23,18 @@ const TOTAL_MONTHS = 12
 
 const toolbar: Components<CalendarEvent>['toolbar'] = () => null
 
-const clampEventsToMonth = <T extends CalendarEvent>(events: T[], monthDate: Date): T[] => {
+// Keep cross-month events intact while only rendering those that intersect the current month.
+const filterEventsForMonth = <T extends CalendarEvent>(events: T[], monthDate: Date): T[] => {
   const monthStart = startOfMonth(monthDate)
   const monthEndExclusive = addMonths(monthStart, 1)
   const monthStartTime = monthStart.getTime()
   const monthEndExclusiveTime = monthEndExclusive.getTime()
 
-  return events.reduce<T[]>((acc, event) => {
+  return events.filter((event) => {
     const eventStartTime = event.start.getTime()
     const eventEndTime = event.end.getTime()
-
-    if (eventEndTime <= monthStartTime || eventStartTime >= monthEndExclusiveTime) {
-      return acc
-    }
-
-    const start = eventStartTime < monthStartTime ? new Date(monthStartTime) : event.start
-    const end = eventEndTime > monthEndExclusiveTime ? new Date(monthEndExclusiveTime) : event.end
-
-    if (start === event.start && end === event.end) {
-      acc.push(event)
-    } else {
-      acc.push({ ...event, start, end })
-    }
-
-    return acc
-  }, [])
+    return eventEndTime > monthStartTime && eventStartTime < monthEndExclusiveTime
+  })
 }
 
 export const MultiMonthCalendar = ({
@@ -74,16 +61,16 @@ export const MultiMonthCalendar = ({
     <div className="multi-month-calendar">
       <div className="multi-month-calendar__grid">
         {months.map(({ id, date }) => (
-          <div key={id} className="multi-month-calendar__cell">
-            <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
-            <Calendar<CalendarEvent>
-              localizer={localizer}
-              events={clampEventsToMonth(events, date)}
-              startAccessor="start"
-              endAccessor="end"
-              messages={messages}
-              selectable
-              popup
+            <div key={id} className="multi-month-calendar__cell">
+              <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
+              <Calendar<CalendarEvent>
+                localizer={localizer}
+                events={filterEventsForMonth(events, date)}
+                startAccessor="start"
+                endAccessor="end"
+                messages={messages}
+                selectable
+                popup
               view={Views.MONTH}
               date={date}
               style={{ height: '100%' }}
