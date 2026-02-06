@@ -37,12 +37,27 @@ app.get('/health', (_req, res) => {
 /* ==================== Rutas autenticadas ==================== */
 
 const socialLinkSchema = z.union([z.string().trim().url('Debe ser una URL válida'), z.literal(null)])
+const optionalTextSchema = z.union([z.string().trim().min(1), z.literal(null)])
+const optionalLatSchema = z.union([z.number().min(-90).max(90), z.literal(null)])
+const optionalLngSchema = z.union([z.number().min(-180).max(180), z.literal(null)])
+const imageUrlListSchema = z.array(z.string().trim().url('Cada imagen debe ser una URL válida')).max(24)
+const instagramPostListSchema = z.array(z.string().trim().url('Cada post de Instagram debe ser una URL válida')).max(6)
 
 const propertyPayloadSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida'),
   instagramUrl: socialLinkSchema.optional(),
   googlePhotosUrl: socialLinkSchema.optional(),
+  description: optionalTextSchema.optional(),
+  locationLabel: optionalTextSchema.optional(),
+  googleMapsPinUrl: socialLinkSchema.optional(),
+  googleMapsPlaceId: optionalTextSchema.optional(),
+  googleMapsLat: optionalLatSchema.optional(),
+  googleMapsLng: optionalLngSchema.optional(),
+  showGoogleReviews: z.boolean().optional(),
+  googleMapsReviewsUrl: socialLinkSchema.optional(),
+  galleryImageUrls: imageUrlListSchema.optional(),
+  instagramPostUrls: instagramPostListSchema.optional(),
 })
 
 const propertyUpdateSchema = z.object({
@@ -50,6 +65,16 @@ const propertyUpdateSchema = z.object({
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida').optional(),
   instagramUrl: socialLinkSchema.optional(),
   googlePhotosUrl: socialLinkSchema.optional(),
+  description: optionalTextSchema.optional(),
+  locationLabel: optionalTextSchema.optional(),
+  googleMapsPinUrl: socialLinkSchema.optional(),
+  googleMapsPlaceId: optionalTextSchema.optional(),
+  googleMapsLat: optionalLatSchema.optional(),
+  googleMapsLng: optionalLngSchema.optional(),
+  showGoogleReviews: z.boolean().optional(),
+  googleMapsReviewsUrl: socialLinkSchema.optional(),
+  galleryImageUrls: imageUrlListSchema.optional(),
+  instagramPostUrls: instagramPostListSchema.optional(),
   regenerateSlug: z.boolean().optional(),
 })
 
@@ -75,7 +100,9 @@ const syncPayloadSchema = z.object({
 })
 
 const propertyRouter = express.Router()
-propertyRouter.use((req, res, next) => authService.middleware(req as AuthenticatedRequest, res, next))
+propertyRouter.use((req, res, next) => {
+  void authService.middleware(req as AuthenticatedRequest, res, next)
+})
 
 propertyRouter.get(
   '/',

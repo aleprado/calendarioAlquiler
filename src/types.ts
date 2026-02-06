@@ -55,6 +55,16 @@ export interface PropertyDTO {
   updatedAt: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  description: string | null
+  locationLabel: string | null
+  googleMapsPinUrl: string | null
+  googleMapsPlaceId: string | null
+  googleMapsLat: number | null
+  googleMapsLng: number | null
+  showGoogleReviews: boolean
+  googleMapsReviewsUrl: string | null
+  galleryImageUrls: string[]
+  instagramPostUrls: string[]
 }
 
 export interface NewPropertyPayload {
@@ -62,6 +72,16 @@ export interface NewPropertyPayload {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
 }
 
 export interface UpdatePropertyPayload {
@@ -69,6 +89,16 @@ export interface UpdatePropertyPayload {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
   regenerateSlug?: boolean
 }
 
@@ -88,6 +118,16 @@ export interface PublicAvailabilityDTO {
   publicSlug: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  description: string | null
+  locationLabel: string | null
+  googleMapsPinUrl: string | null
+  googleMapsPlaceId: string | null
+  googleMapsLat: number | null
+  googleMapsLng: number | null
+  showGoogleReviews: boolean
+  googleMapsReviewsUrl: string | null
+  galleryImageUrls: string[]
+  instagramPostUrls: string[]
   events: PublicEventDTO[]
 }
 

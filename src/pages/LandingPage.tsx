@@ -25,16 +25,27 @@ export const LandingPage = () => {
 
   return (
     <div className="landing-layout">
-      <header className="landing-hero landing-hero--centered">
-        <h1>
-          SimpleAlquiler<span>.net</span>
-        </h1>
-        <p>Gestiona tus propiedades y coordina reservas en un solo lugar.</p>
-        <button type="button" className="primary" onClick={handleSignIn} disabled={loading}>
-          {loading ? 'Cargando...' : 'Ingresar con Google'}
-        </button>
-        {error && <p className="alert alert--inline">{error}</p>}
-      </header>
+      <main className="landing-main">
+        <header className="landing-hero landing-hero--centered">
+          <img src="/logo-vacacional.svg" alt="Brisa Alquileres" className="landing-logo" />
+          <h1>
+            Brisa Alquileres<span>.com</span>
+          </h1>
+          <p>Gestion profesional de alquileres vacacionales con calendario, web de promocion y reservas directas.</p>
+          <button type="button" className="primary" onClick={handleSignIn} disabled={loading}>
+            {loading ? 'Cargando...' : 'Ingresar con Google'}
+          </button>
+          {error && <p className="alert alert--inline">{error}</p>}
+        </header>
+        <section className="landing-features">
+          <h2>Todo en un solo panel</h2>
+          <ul>
+            <li>Sincronizacion automatica de disponibilidad</li>
+            <li>Pagina publica de promocion con mapa e imagenes</li>
+            <li>Calendario de reservas separado y mas practico</li>
+          </ul>
+        </section>
+      </main>
     </div>
   )
 }

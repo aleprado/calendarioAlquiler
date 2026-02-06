@@ -7,6 +7,16 @@ export interface CreatePropertyPayload {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
 }
 
 export interface UpdatePropertyPayload {
@@ -14,6 +24,16 @@ export interface UpdatePropertyPayload {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
   regenerateSlug?: boolean
 }
 
@@ -22,6 +42,18 @@ const sanitizeOptionalUrl = (value?: string | null) => {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
   return trimmed ? trimmed : null
+}
+
+const sanitizeOptionalText = (value?: string | null) => {
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
+}
+
+const sanitizeStringList = (value?: string[]) => {
+  if (!Array.isArray(value)) return undefined
+  return value.map((item) => item.trim()).filter((item) => item.length > 0)
 }
 
 export class PropertyService {
@@ -58,6 +90,16 @@ export class PropertyService {
       airbnbIcalUrl: payload.airbnbIcalUrl.trim(),
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl) ?? null,
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl) ?? null,
+      description: sanitizeOptionalText(payload.description) ?? null,
+      locationLabel: sanitizeOptionalText(payload.locationLabel) ?? null,
+      googleMapsPinUrl: sanitizeOptionalUrl(payload.googleMapsPinUrl) ?? null,
+      googleMapsPlaceId: sanitizeOptionalText(payload.googleMapsPlaceId) ?? null,
+      googleMapsLat: payload.googleMapsLat ?? null,
+      googleMapsLng: payload.googleMapsLng ?? null,
+      showGoogleReviews: payload.showGoogleReviews === true,
+      googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl) ?? null,
+      galleryImageUrls: sanitizeStringList(payload.galleryImageUrls) ?? [],
+      instagramPostUrls: sanitizeStringList(payload.instagramPostUrls) ?? [],
     })
   }
 
@@ -69,6 +111,16 @@ export class PropertyService {
       airbnbIcalUrl: payload.airbnbIcalUrl,
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl),
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl),
+      description: sanitizeOptionalText(payload.description),
+      locationLabel: sanitizeOptionalText(payload.locationLabel),
+      googleMapsPinUrl: sanitizeOptionalUrl(payload.googleMapsPinUrl),
+      googleMapsPlaceId: sanitizeOptionalText(payload.googleMapsPlaceId),
+      googleMapsLat: payload.googleMapsLat,
+      googleMapsLng: payload.googleMapsLng,
+      showGoogleReviews: payload.showGoogleReviews,
+      googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl),
+      galleryImageUrls: sanitizeStringList(payload.galleryImageUrls),
+      instagramPostUrls: sanitizeStringList(payload.instagramPostUrls),
       regenerateSlug: payload.regenerateSlug,
     })
   }

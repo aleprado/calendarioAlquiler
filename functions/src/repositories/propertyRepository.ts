@@ -7,6 +7,20 @@ const normalizeOptionalString = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null
 }
 
+const normalizeOptionalNumber = (value: unknown): number | null => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null
+  return Number.isFinite(value) ? value : null
+}
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0)
+}
+
+const normalizeOptionalBoolean = (value: unknown): boolean => value === true
+
 export interface PropertyRecord {
   id: string
   ownerId: string
@@ -19,6 +33,16 @@ export interface PropertyRecord {
   updatedAt: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  description: string | null
+  locationLabel: string | null
+  googleMapsPinUrl: string | null
+  googleMapsPlaceId: string | null
+  googleMapsLat: number | null
+  googleMapsLng: number | null
+  showGoogleReviews: boolean
+  googleMapsReviewsUrl: string | null
+  galleryImageUrls: string[]
+  instagramPostUrls: string[]
 }
 
 export interface CreatePropertyInput {
@@ -27,6 +51,16 @@ export interface CreatePropertyInput {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
 }
 
 export interface UpdatePropertyInput {
@@ -34,6 +68,16 @@ export interface UpdatePropertyInput {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  description?: string | null
+  locationLabel?: string | null
+  googleMapsPinUrl?: string | null
+  googleMapsPlaceId?: string | null
+  googleMapsLat?: number | null
+  googleMapsLng?: number | null
+  showGoogleReviews?: boolean
+  googleMapsReviewsUrl?: string | null
+  galleryImageUrls?: string[]
+  instagramPostUrls?: string[]
   regenerateSlug?: boolean
 }
 
@@ -59,6 +103,16 @@ export class PropertyRepository {
       updatedAt: data.updatedAt ?? '',
       instagramUrl: normalizeOptionalString((data as Record<string, unknown>).instagramUrl),
       googlePhotosUrl: normalizeOptionalString((data as Record<string, unknown>).googlePhotosUrl),
+      description: normalizeOptionalString((data as Record<string, unknown>).description),
+      locationLabel: normalizeOptionalString((data as Record<string, unknown>).locationLabel),
+      googleMapsPinUrl: normalizeOptionalString((data as Record<string, unknown>).googleMapsPinUrl),
+      googleMapsPlaceId: normalizeOptionalString((data as Record<string, unknown>).googleMapsPlaceId),
+      googleMapsLat: normalizeOptionalNumber((data as Record<string, unknown>).googleMapsLat),
+      googleMapsLng: normalizeOptionalNumber((data as Record<string, unknown>).googleMapsLng),
+      showGoogleReviews: normalizeOptionalBoolean((data as Record<string, unknown>).showGoogleReviews),
+      googleMapsReviewsUrl: normalizeOptionalString((data as Record<string, unknown>).googleMapsReviewsUrl),
+      galleryImageUrls: normalizeStringArray((data as Record<string, unknown>).galleryImageUrls),
+      instagramPostUrls: normalizeStringArray((data as Record<string, unknown>).instagramPostUrls),
     }
   }
 
@@ -146,6 +200,16 @@ export class PropertyRepository {
       updatedAt: now,
       instagramUrl: normalizeOptionalString(input.instagramUrl),
       googlePhotosUrl: normalizeOptionalString(input.googlePhotosUrl),
+      description: normalizeOptionalString(input.description),
+      locationLabel: normalizeOptionalString(input.locationLabel),
+      googleMapsPinUrl: normalizeOptionalString(input.googleMapsPinUrl),
+      googleMapsPlaceId: normalizeOptionalString(input.googleMapsPlaceId),
+      googleMapsLat: normalizeOptionalNumber(input.googleMapsLat),
+      googleMapsLng: normalizeOptionalNumber(input.googleMapsLng),
+      showGoogleReviews: input.showGoogleReviews === true,
+      googleMapsReviewsUrl: normalizeOptionalString(input.googleMapsReviewsUrl),
+      galleryImageUrls: normalizeStringArray(input.galleryImageUrls),
+      instagramPostUrls: normalizeStringArray(input.instagramPostUrls),
     }
 
     await docRef.set(payload)
@@ -170,6 +234,22 @@ export class PropertyRepository {
       ...(updates.googlePhotosUrl !== undefined
         ? { googlePhotosUrl: normalizeOptionalString(updates.googlePhotosUrl) }
         : {}),
+      ...(updates.description !== undefined ? { description: normalizeOptionalString(updates.description) } : {}),
+      ...(updates.locationLabel !== undefined ? { locationLabel: normalizeOptionalString(updates.locationLabel) } : {}),
+      ...(updates.googleMapsPinUrl !== undefined
+        ? { googleMapsPinUrl: normalizeOptionalString(updates.googleMapsPinUrl) }
+        : {}),
+      ...(updates.googleMapsPlaceId !== undefined
+        ? { googleMapsPlaceId: normalizeOptionalString(updates.googleMapsPlaceId) }
+        : {}),
+      ...(updates.googleMapsLat !== undefined ? { googleMapsLat: normalizeOptionalNumber(updates.googleMapsLat) } : {}),
+      ...(updates.googleMapsLng !== undefined ? { googleMapsLng: normalizeOptionalNumber(updates.googleMapsLng) } : {}),
+      ...(updates.showGoogleReviews !== undefined ? { showGoogleReviews: updates.showGoogleReviews === true } : {}),
+      ...(updates.googleMapsReviewsUrl !== undefined
+        ? { googleMapsReviewsUrl: normalizeOptionalString(updates.googleMapsReviewsUrl) }
+        : {}),
+      ...(updates.galleryImageUrls !== undefined ? { galleryImageUrls: normalizeStringArray(updates.galleryImageUrls) } : {}),
+      ...(updates.instagramPostUrls !== undefined ? { instagramPostUrls: normalizeStringArray(updates.instagramPostUrls) } : {}),
       updatedAt: now,
     }
 

@@ -275,18 +275,20 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   }, [])
 
   const handleCreateEvent = useCallback(
-    async (title: string) => {
+    async (payload: { title: string; description?: string; location?: string }) => {
       if (!pendingRange) return
       setIsSubmitting(true)
       setModalError(null)
       try {
-        const payload = await createEvent(property.id, {
-          title,
+        const createdEvent = await createEvent(property.id, {
+          title: payload.title,
           start: pendingRange.start.toISOString(),
           end: pendingRange.end.toISOString(),
+          description: payload.description,
+          location: payload.location,
         })
         setEvents((prev) => {
-          const next = [...prev, toCalendarEvent(payload)]
+          const next = [...prev, toCalendarEvent(createdEvent)]
           return next.sort((a, b) => a.start.getTime() - b.start.getTime())
         })
         handleCloseModal()
@@ -404,6 +406,8 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
             onSelectEvent={handleSelectEvent}
             eventPropGetter={eventPropGetter}
             renderMonthEvent={MonthEventRenderer}
+            monthsToShow={1}
+            showNavigator
           />
         )}
       </div>

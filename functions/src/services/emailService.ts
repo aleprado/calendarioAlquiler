@@ -61,7 +61,7 @@ export const sendReservationRequestEmail = async (payload: ReservationNotificati
   try {
     await sgMail.send({
       to: uniqueRecipients,
-      from: NOTIFY_FROM_EMAIL as string,
+      from: NOTIFY_FROM_EMAIL!,
       subject: `Nueva solicitud de reserva para ${payload.propertyName}`,
       text: lines.join('\n'),
     })

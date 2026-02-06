@@ -4,7 +4,7 @@ import type { FormEvent } from 'react'
 interface EventFormModalProps {
   isOpen: boolean
   range: { start: Date; end: Date; displayEnd: Date } | null
-  onSubmit: (title: string) => void
+  onSubmit: (payload: { title: string; description?: string; location?: string }) => void
   onCancel: () => void
   isSubmitting?: boolean
   errorMessage?: string | null
@@ -51,12 +51,16 @@ export const EventFormModal = ({
   errorMessage,
 }: EventFormModalProps) => {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [location, setLocation] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isOpen) {
       setTitle('')
+      setDescription('')
+      setLocation('')
       setLocalError(null)
       inputRef.current?.focus()
     }
@@ -75,7 +79,11 @@ export const EventFormModal = ({
       return
     }
 
-    onSubmit(trimmedTitle)
+    onSubmit({
+      title: trimmedTitle,
+      description: description.trim() || undefined,
+      location: location.trim() || undefined,
+    })
   }
 
   return (
@@ -95,6 +103,24 @@ export const EventFormModal = ({
               setLocalError(null)
             }}
             placeholder="Ej. Check-in familia Perez"
+            disabled={isSubmitting}
+          />
+          <label htmlFor="event-location">Ubicacion (opcional)</label>
+          <input
+            id="event-location"
+            type="text"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+            placeholder="Ej. Departamento 3B"
+            disabled={isSubmitting}
+          />
+          <label htmlFor="event-description">Descripcion (opcional)</label>
+          <textarea
+            id="event-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Notas internas del evento"
+            rows={3}
             disabled={isSubmitting}
           />
           <div className="modal-errors" role="alert">

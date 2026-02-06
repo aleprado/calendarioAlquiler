@@ -1,4 +1,4 @@
-import { createElement, useMemo } from 'react'
+import { createElement, useMemo, useState } from 'react'
 import { addMonths, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Views, type CalendarProps, type Components, type SlotInfo, type EventProps } from 'react-big-calendar'
@@ -17,9 +17,11 @@ type MultiMonthCalendarProps = {
   eventPropGetter?: CalendarEventPropGetter
   renderMonthEvent?: React.ComponentType<MonthEventComponentProps>
   dayPropGetter?: CalendarProps<CalendarEvent>['dayPropGetter']
+  monthsToShow?: number
+  showNavigator?: boolean
 }
 
-const TOTAL_MONTHS = 12
+const DEFAULT_TOTAL_MONTHS = 12
 
 const toolbar: Components<CalendarEvent>['toolbar'] = () => null
 
@@ -45,32 +47,48 @@ export const MultiMonthCalendar = ({
   eventPropGetter,
   renderMonthEvent,
   dayPropGetter,
+  monthsToShow = DEFAULT_TOTAL_MONTHS,
+  showNavigator = false,
 }: MultiMonthCalendarProps) => {
-  const visibleStart = useMemo(() => startOfMonth(new Date()), [])
+  const todayMonth = useMemo(() => startOfMonth(new Date()), [])
+  const [anchorMonth, setAnchorMonth] = useState(todayMonth)
 
   const months = useMemo(
     () =>
-      Array.from({ length: TOTAL_MONTHS }, (_, index) => ({
+      Array.from({ length: Math.max(1, monthsToShow) }, (_, index) => ({
         id: index,
-        date: addMonths(visibleStart, index),
+        date: addMonths(anchorMonth, index),
       })),
-    [visibleStart],
+    [anchorMonth, monthsToShow],
   )
 
   return (
     <div className="multi-month-calendar">
+      {showNavigator && (
+        <div className="calendar-navigator">
+          <button type="button" className="secondary" onClick={() => setAnchorMonth((current) => addMonths(current, -1))}>
+            Mes anterior
+          </button>
+          <button type="button" className="secondary" onClick={() => setAnchorMonth(todayMonth)}>
+            Hoy
+          </button>
+          <button type="button" className="secondary" onClick={() => setAnchorMonth((current) => addMonths(current, 1))}>
+            Mes siguiente
+          </button>
+        </div>
+      )}
       <div className="multi-month-calendar__grid">
         {months.map(({ id, date }) => (
-            <div key={id} className="multi-month-calendar__cell">
-              <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
-              <Calendar<CalendarEvent>
-                localizer={localizer}
-                events={filterEventsForMonth(events, date)}
-                startAccessor="start"
-                endAccessor="end"
-                messages={messages}
-                selectable
-                popup
+          <div key={id} className="multi-month-calendar__cell">
+            <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
+            <Calendar<CalendarEvent>
+              localizer={localizer}
+              events={filterEventsForMonth(events, date)}
+              startAccessor="start"
+              endAccessor="end"
+              messages={messages}
+              selectable
+              popup
               view={Views.MONTH}
               date={date}
               style={{ height: '100%' }}

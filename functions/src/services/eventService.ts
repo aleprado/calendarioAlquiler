@@ -55,7 +55,17 @@ export interface PublicAvailabilityPayload {
   publicSlug: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
-  events: Array<{ start: string; end: string; status: string }>
+  description: string | null
+  locationLabel: string | null
+  googleMapsPinUrl: string | null
+  googleMapsPlaceId: string | null
+  googleMapsLat: number | null
+  googleMapsLng: number | null
+  showGoogleReviews: boolean
+  googleMapsReviewsUrl: string | null
+  galleryImageUrls: string[]
+  instagramPostUrls: string[]
+  events: { start: string; end: string; status: string }[]
 }
 
 export interface PublicRequestResult {
@@ -145,11 +155,11 @@ export class EventService {
     }
 
     const events = await eventRepository.list(property.id)
-    const sanitized = events.map(sanitizePublicEvent).filter(Boolean) as Array<{
+    const sanitized = events.map(sanitizePublicEvent).filter(Boolean) as {
       start: string
       end: string
       status: string
-    }>
+    }[]
 
     return {
       propertyId: property.id,
@@ -157,6 +167,16 @@ export class EventService {
       publicSlug: property.publicSlug,
       instagramUrl: property.instagramUrl ?? null,
       googlePhotosUrl: property.googlePhotosUrl ?? null,
+      description: property.description ?? null,
+      locationLabel: property.locationLabel ?? null,
+      googleMapsPinUrl: property.googleMapsPinUrl ?? null,
+      googleMapsPlaceId: property.googleMapsPlaceId ?? null,
+      googleMapsLat: property.googleMapsLat ?? null,
+      googleMapsLng: property.googleMapsLng ?? null,
+      showGoogleReviews: property.showGoogleReviews === true,
+      googleMapsReviewsUrl: property.googleMapsReviewsUrl ?? null,
+      galleryImageUrls: property.galleryImageUrls ?? [],
+      instagramPostUrls: property.instagramPostUrls ?? [],
       events: sanitized,
     }
   }

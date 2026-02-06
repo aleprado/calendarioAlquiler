@@ -1,17 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
+
 :root {
-  --color-primary: #0ea5e9;
-  --color-primary-dark: #0284c7;
+  --color-primary: #0f766e;
+  --color-primary-dark: #0b4f4a;
   --color-secondary: #f97316;
-  --color-sand: #fef3c7;
-  --color-surf: #ecfeff;
-  --color-bg: linear-gradient(160deg, #fef9c3 0%, #cffafe 55%, #bae6fd 100%);
-  --color-text: #1f2937;
-  --color-muted: #64748b;
+  --color-sand: #ffe9b5;
+  --color-surf: #d8f4ff;
+  --color-bg: radial-gradient(circle at 12% 8%, #fff8dd 0%, #eefcff 32%, #d7f4ff 100%);
+  --color-text: #17212f;
+  --color-muted: #4f647f;
   --color-danger: #dc2626;
-  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 20px 45px rgba(15, 23, 42, 0.14);
   --radius-lg: 1.25rem;
   --radius-sm: 0.75rem;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Sora', 'Avenir Next', 'Trebuchet MS', sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
 }
@@ -64,6 +66,15 @@ body {
   box-shadow: none;
 }
 
+a.primary,
+a.secondary,
+a.danger {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .dashboard-layout,
 .public-layout,
 .landing-layout {
@@ -88,7 +99,9 @@ body {
 .landing-hero h1 {
   margin: 0;
   font-size: clamp(2rem, 4vw, 2.75rem);
+  font-family: 'Fraunces', Georgia, serif;
   font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--color-primary-dark);
 }
 
@@ -568,6 +581,19 @@ body {
   align-items: stretch;
 }
 
+.landing-main {
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1.5rem;
+  width: min(1120px, 100%);
+}
+
+.landing-logo {
+  width: clamp(180px, 28vw, 260px);
+  height: auto;
+}
+
 .landing-hero {
   max-width: 560px;
   display: flex;
@@ -597,8 +623,9 @@ body {
   background: rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-lg);
   padding: 1.75rem;
-  max-width: 540px;
+  max-width: none;
   box-shadow: var(--shadow-lg);
+  align-self: center;
 }
 
 .landing-features h2 {
@@ -624,11 +651,290 @@ body {
   background: var(--color-bg);
 }
 
+.public-promo-layout,
+.public-calendar-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2.25rem clamp(1.25rem, 4vw, 3.25rem);
+}
+
+.promo-label {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #0369a1;
+  font-weight: 700;
+}
+
+.promo-hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(14, 116, 110, 0.15);
+  box-shadow: var(--shadow-lg);
+  border-radius: 1.25rem;
+  padding: clamp(1.15rem, 2.3vw, 1.8rem);
+}
+
+.promo-hero__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.promo-hero__content h1 {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: #0b4f4a;
+}
+
+.promo-hero__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.promo-hero__media {
+  border-radius: 1rem;
+  overflow: hidden;
+  min-height: 260px;
+}
+
+.promo-hero__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.promo-hero__placeholder {
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px dashed rgba(15, 23, 42, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  min-height: 260px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.promo-section {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(14, 116, 110, 0.12);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-lg);
+  padding: clamp(1rem, 2vw, 1.4rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.promo-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.promo-section__header h2 {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.45rem;
+  color: var(--color-primary-dark);
+}
+
+.promo-section__header p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.promo-carousel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.promo-carousel__main {
+  border-radius: 0.9rem;
+  overflow: hidden;
+  position: relative;
+  background: #eef9ff;
+}
+
+.promo-carousel__main img {
+  width: 100%;
+  min-height: 320px;
+  max-height: 560px;
+  object-fit: cover;
+  display: block;
+}
+
+.promo-carousel__controls {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.promo-carousel__thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.55rem;
+}
+
+.promo-carousel__thumb {
+  border: 2px solid transparent;
+  border-radius: 0.65rem;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  cursor: pointer;
+}
+
+.promo-carousel__thumb img {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  display: block;
+}
+
+.promo-carousel__thumb--active {
+  border-color: #0f766e;
+}
+
+.promo-map-frame {
+  border-radius: 0.9rem;
+  overflow: hidden;
+  min-height: 340px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.promo-map-frame iframe {
+  width: 100%;
+  min-height: 340px;
+  border: 0;
+}
+
+.promo-reviews {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: rgba(255, 247, 237, 0.8);
+  padding: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.promo-reviews h3,
+.promo-reviews p {
+  margin: 0;
+}
+
+.promo-empty {
+  padding: 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--color-muted);
+}
+
+.promo-empty p {
+  margin-top: 0;
+}
+
+.instagram-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.instagram-preview-grid .instagram-media {
+  margin: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  border-radius: 0.9rem !important;
+  border: 1px solid rgba(15, 23, 42, 0.09) !important;
+  background: #ffffff !important;
+  overflow: hidden;
+}
+
+.promo-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 1.5rem;
+}
+
+.public-calendar-header {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 1rem;
+  border: 1px solid rgba(14, 116, 110, 0.12);
+  box-shadow: var(--shadow-lg);
+  padding: clamp(1rem, 2vw, 1.5rem);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.public-calendar-header h1 {
+  margin: 0.35rem 0;
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.public-calendar-header p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.public-calendar-header__actions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.coordinate-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.coordinate-row label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-primary-dark);
+  font-weight: 600;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+}
+
 .multi-month-calendar {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.calendar-navigator {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .multi-month-calendar__grid {
@@ -637,7 +943,7 @@ body {
   grid-template-columns: 1fr;
   flex: 1;
   min-height: 0;
-  grid-auto-rows: minmax(620px, auto);
+  grid-auto-rows: minmax(560px, auto);
 }
 
 @media (min-width: 768px) {
@@ -849,5 +1155,31 @@ body {
   .landing-hero,
   .landing-features {
     padding: 1.35rem;
+  }
+
+  .landing-main {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-logo {
+    width: 170px;
+  }
+
+  .promo-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .public-promo-layout,
+  .public-calendar-layout {
+    padding: 1.75rem;
+  }
+
+  .coordinate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .public-calendar-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

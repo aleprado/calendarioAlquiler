@@ -10,11 +10,73 @@ const getPublicUrl = (property: PropertyDTO) => {
   return `${origin}/public/${property.publicSlug}`
 }
 
+const getPublicCalendarUrl = (property: PropertyDTO) => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}/public/${property.publicSlug}/calendario`
+}
+
+const parseUrlList = (value: string) =>
+  value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+
+const parseOptionalCoordinate = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const parseGoogleMapsPin = (pinUrl: string): { placeId?: string; lat?: string; lng?: string } => {
+  const trimmed = pinUrl.trim()
+  if (!trimmed) return {}
+  try {
+    const url = new URL(trimmed)
+    const q = url.searchParams.get('q') ?? url.searchParams.get('query') ?? ''
+    const placeId = url.searchParams.get('query_place_id') ?? (q.startsWith('place_id:') ? q.replace('place_id:', '') : '')
+
+    const atCoords = url.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+    if (atCoords) {
+      return {
+        placeId: placeId || undefined,
+        lat: atCoords[1],
+        lng: atCoords[2],
+      }
+    }
+
+    const queryCoords = q.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+    if (queryCoords) {
+      return {
+        placeId: placeId || undefined,
+        lat: queryCoords[1],
+        lng: queryCoords[2],
+      }
+    }
+
+    return {
+      placeId: placeId || undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
 const INITIAL_FORM = {
   name: '',
   airbnbIcalUrl: '',
   instagramUrl: '',
   googlePhotosUrl: '',
+  description: '',
+  locationLabel: '',
+  googleMapsPinUrl: '',
+  googleMapsPlaceId: '',
+  googleMapsLat: '',
+  googleMapsLng: '',
+  showGoogleReviews: false,
+  googleMapsReviewsUrl: '',
+  galleryImageUrls: '',
+  instagramPostUrls: '',
 }
 
 export const DashboardPage = () => {
@@ -25,7 +87,7 @@ export const DashboardPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createForm, setCreateForm] = useState(INITIAL_FORM)
-  const [copyFeedback, setCopyFeedback] = useState<'link' | 'code' | null>(null)
+  const [copyFeedback, setCopyFeedback] = useState<'link' | 'calendar' | 'code' | null>(null)
   const [isPropertyMenuOpen, setIsPropertyMenuOpen] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -75,6 +137,16 @@ export const DashboardPage = () => {
         airbnbIcalUrl: selectedProperty.airbnbIcalUrl,
         instagramUrl: selectedProperty.instagramUrl ?? '',
         googlePhotosUrl: selectedProperty.googlePhotosUrl ?? '',
+        description: selectedProperty.description ?? '',
+        locationLabel: selectedProperty.locationLabel ?? '',
+        googleMapsPinUrl: selectedProperty.googleMapsPinUrl ?? '',
+        googleMapsPlaceId: selectedProperty.googleMapsPlaceId ?? '',
+        googleMapsLat: selectedProperty.googleMapsLat !== null ? String(selectedProperty.googleMapsLat) : '',
+        googleMapsLng: selectedProperty.googleMapsLng !== null ? String(selectedProperty.googleMapsLng) : '',
+        showGoogleReviews: selectedProperty.showGoogleReviews === true,
+        googleMapsReviewsUrl: selectedProperty.googleMapsReviewsUrl ?? '',
+        galleryImageUrls: selectedProperty.galleryImageUrls.join('\n'),
+        instagramPostUrls: selectedProperty.instagramPostUrls.join('\n'),
       })
       setEditError(null)
     }
@@ -128,6 +200,18 @@ export const DashboardPage = () => {
     }
   }
 
+  const handleCopyCalendarLink = async () => {
+    if (!selectedProperty) return
+    try {
+      await navigator.clipboard.writeText(getPublicCalendarUrl(selectedProperty))
+      setCopyFeedback('calendar')
+      window.setTimeout(() => setCopyFeedback(null), 2000)
+      setIsPropertyMenuOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo copiar el link del calendario. Copialo manualmente.')
+    }
+  }
+
   const openJoinModal = () => {
     setJoinCode('')
     setJoinError(null)
@@ -178,11 +262,26 @@ export const DashboardPage = () => {
     try {
       const trimmedInstagramUrl = editForm.instagramUrl.trim()
       const trimmedGoogleUrl = editForm.googlePhotosUrl.trim()
+      const trimmedDescription = editForm.description.trim()
+      const trimmedLocationLabel = editForm.locationLabel.trim()
+      const trimmedPinUrl = editForm.googleMapsPinUrl.trim()
+      const trimmedPlaceId = editForm.googleMapsPlaceId.trim()
+      const trimmedReviewsUrl = editForm.googleMapsReviewsUrl.trim()
       const updated = await updateProperty(selectedProperty.id, {
         name: editForm.name.trim(),
         airbnbIcalUrl: editForm.airbnbIcalUrl.trim(),
         instagramUrl: trimmedInstagramUrl ? trimmedInstagramUrl : null,
         googlePhotosUrl: trimmedGoogleUrl ? trimmedGoogleUrl : null,
+        description: trimmedDescription ? trimmedDescription : null,
+        locationLabel: trimmedLocationLabel ? trimmedLocationLabel : null,
+        googleMapsPinUrl: trimmedPinUrl ? trimmedPinUrl : null,
+        googleMapsPlaceId: trimmedPlaceId ? trimmedPlaceId : null,
+        googleMapsLat: parseOptionalCoordinate(editForm.googleMapsLat),
+        googleMapsLng: parseOptionalCoordinate(editForm.googleMapsLng),
+        showGoogleReviews: editForm.showGoogleReviews,
+        googleMapsReviewsUrl: trimmedReviewsUrl ? trimmedReviewsUrl : null,
+        galleryImageUrls: parseUrlList(editForm.galleryImageUrls),
+        instagramPostUrls: parseUrlList(editForm.instagramPostUrls),
       })
       setProperties((prev) => prev.map((property) => (property.id === updated.id ? updated : property)))
       setIsEditModalOpen(false)
@@ -285,6 +384,9 @@ export const DashboardPage = () => {
                     <button type="button" className="property-menu__item" onClick={handleCopyPublicLink}>
                       Copiar link público
                     </button>
+                    <button type="button" className="property-menu__item" onClick={handleCopyCalendarLink}>
+                      Copiar link de calendario
+                    </button>
                     <button type="button" className="property-menu__item" onClick={handleCopyShareCode}>
                       Copiar código de acceso
                     </button>
@@ -310,7 +412,13 @@ export const DashboardPage = () => {
                     </button>
                   </div>
                   {copyFeedback && (
-                    <div className="menu-hint">{copyFeedback === 'link' ? '¡Link copiado!' : '¡Código copiado!'}</div>
+                    <div className="menu-hint">
+                      {copyFeedback === 'link'
+                        ? '¡Link público copiado!'
+                        : copyFeedback === 'calendar'
+                          ? '¡Link del calendario copiado!'
+                          : '¡Código copiado!'}
+                    </div>
                   )}
                 </div>
               )}
@@ -442,6 +550,103 @@ export const DashboardPage = () => {
                 onChange={(event) => setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))}
                 placeholder="https://photos.app.goo.gl/tu_album"
               />
+              <label htmlFor="edit-description">Descripción para la página pública</label>
+              <textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Describe la experiencia de hospedaje, capacidad, estilo y puntos fuertes."
+                rows={4}
+              />
+              <label htmlFor="edit-location-label">Ubicación visible (texto)</label>
+              <input
+                id="edit-location-label"
+                type="text"
+                value={editForm.locationLabel}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, locationLabel: event.target.value }))}
+                placeholder="Ej. Playa del Carmen, Quintana Roo"
+              />
+              <label htmlFor="edit-maps-pin">Pin de Google Maps (URL)</label>
+              <input
+                id="edit-maps-pin"
+                type="url"
+                value={editForm.googleMapsPinUrl}
+                onChange={(event) => {
+                  const value = event.target.value
+                  const parsed = parseGoogleMapsPin(value)
+                  setEditForm((prev) => ({
+                    ...prev,
+                    googleMapsPinUrl: value,
+                    googleMapsPlaceId: parsed.placeId ?? prev.googleMapsPlaceId,
+                    googleMapsLat: parsed.lat ?? prev.googleMapsLat,
+                    googleMapsLng: parsed.lng ?? prev.googleMapsLng,
+                  }))
+                }}
+                placeholder="https://maps.google.com/..."
+              />
+              <label htmlFor="edit-maps-place-id">Google Place ID (opcional)</label>
+              <input
+                id="edit-maps-place-id"
+                type="text"
+                value={editForm.googleMapsPlaceId}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsPlaceId: event.target.value }))}
+                placeholder="ChIJ..."
+              />
+              <div className="coordinate-row">
+                <div>
+                  <label htmlFor="edit-maps-lat">Latitud</label>
+                  <input
+                    id="edit-maps-lat"
+                    type="text"
+                    value={editForm.googleMapsLat}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLat: event.target.value }))}
+                    placeholder="20.2111"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-maps-lng">Longitud</label>
+                  <input
+                    id="edit-maps-lng"
+                    type="text"
+                    value={editForm.googleMapsLng}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLng: event.target.value }))}
+                    placeholder="-87.4653"
+                  />
+                </div>
+              </div>
+              <label htmlFor="edit-google-reviews-toggle" className="checkbox-label">
+                <input
+                  id="edit-google-reviews-toggle"
+                  type="checkbox"
+                  checked={editForm.showGoogleReviews}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, showGoogleReviews: event.target.checked }))}
+                />
+                Mostrar reseñas de Google Maps en la página pública
+              </label>
+              <label htmlFor="edit-google-reviews-url">URL de reseñas (opcional)</label>
+              <input
+                id="edit-google-reviews-url"
+                type="url"
+                value={editForm.googleMapsReviewsUrl}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsReviewsUrl: event.target.value }))}
+                placeholder="https://search.google.com/local/reviews?placeid=..."
+              />
+              <label htmlFor="edit-gallery-urls">URLs de galería (una por línea)</label>
+              <textarea
+                id="edit-gallery-urls"
+                value={editForm.galleryImageUrls}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, galleryImageUrls: event.target.value }))}
+                placeholder={'https://.../foto-1.jpg\nhttps://.../foto-2.jpg'}
+                rows={5}
+              />
+              <label htmlFor="edit-instagram-post-urls">Posts de Instagram destacados (una URL por línea)</label>
+              <textarea
+                id="edit-instagram-post-urls"
+                value={editForm.instagramPostUrls}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, instagramPostUrls: event.target.value }))}
+                placeholder="https://www.instagram.com/p/..."
+                rows={4}
+              />
               <div className="edit-actions">
                 <button type="submit" className="primary" disabled={isSavingEdit}>
                   {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
@@ -459,6 +664,12 @@ export const DashboardPage = () => {
                 Link público actual:{' '}
                 <a href={getPublicUrl(selectedProperty)} target="_blank" rel="noopener noreferrer">
                   {getPublicUrl(selectedProperty)}
+                </a>
+              </p>
+              <p className="public-link">
+                Link del calendario:{' '}
+                <a href={getPublicCalendarUrl(selectedProperty)} target="_blank" rel="noopener noreferrer">
+                  {getPublicCalendarUrl(selectedProperty)}
                 </a>
               </p>
             </form>

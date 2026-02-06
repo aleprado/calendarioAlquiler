@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" role="img" aria-labelledby="title desc">
+  <title id="title">Brisa Alquileres</title>
+  <desc id="desc">Logo vacacional con casa, sol y olas.</desc>
+  <defs>
+    <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd166" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#155e75" />
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(24 24)">
+    <rect width="132" height="132" rx="28" fill="#f8fafc" />
+    <circle cx="98" cy="36" r="18" fill="url(#sun)" />
+    <path d="M18 80 66 42l48 38" fill="none" stroke="url(#roof)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M35 80h62v43H35z" fill="#ffffff" stroke="#0f172a" stroke-width="8" stroke-linejoin="round" />
+    <path d="M55 94h22v29H55z" fill="#cffafe" stroke="#155e75" stroke-width="6" stroke-linejoin="round" />
+    <path d="M16 123c10 0 10 6 20 6s10-6 20-6 10 6 20 6 10-6 20-6 10 6 20 6" fill="none" stroke="url(#sea)" stroke-width="7" stroke-linecap="round" />
+  </g>
+
+  <g transform="translate(180 42)">
+    <text x="0" y="40" font-size="44" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="700" fill="#0f172a">Brisa</text>
+    <text x="0" y="86" font-size="40" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0f766e">Alquileres</text>
+    <text x="2" y="116" font-size="20" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0369a1">vacacional y profesional</text>
+  </g>
+</svg>

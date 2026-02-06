@@ -1,31 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
 import type { SlotInfo } from 'react-big-calendar'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from '../components/MultiMonthCalendar'
 import { RequestFormModal } from '../components/RequestFormModal'
 import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
-import { AboutAppModal } from '../components/AboutAppModal'
 import type { CalendarEvent, PublicAvailabilityDTO } from '../types'
-import instagramLogo from '../../insta-logo.png'
-import googlePhotosLogo from '../../Google-photos-logo.png'
 
 const calendarMessages = {
   date: 'Fecha',
   time: 'Hora',
   event: 'Evento',
-  allDay: 'Todo el día',
+  allDay: 'Todo el dia',
   week: 'Semana',
   work_week: 'Semana laboral',
-  day: 'Día',
+  day: 'Dia',
   month: 'Mes',
   previous: 'Anterior',
   next: 'Siguiente',
   yesterday: 'Ayer',
-  tomorrow: 'Mañana',
+  tomorrow: 'Manana',
   today: 'Hoy',
   agenda: 'Agenda',
-  showMore: (total: number) => `+${total} más`,
+  showMore: (total: number) => `+${total} mas`,
   noEventsInRange: 'No hay eventos en este rango.',
 }
 
@@ -65,16 +61,14 @@ const rangesOverlap = (a: CalendarEvent, start: Date, end: Date) => {
   return aStart < end && aEnd > start
 }
 
-const eventPropGetter: CalendarEventPropGetter = () => {
-  return {
-    style: {
-      backgroundColor: 'transparent',
-      borderColor: 'transparent',
-      color: 'transparent',
-      pointerEvents: 'none',
-    },
-  }
-}
+const eventPropGetter: CalendarEventPropGetter = () => ({
+  style: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    color: 'transparent',
+    pointerEvents: 'none',
+  },
+})
 
 export const PublicPropertyPage = () => {
   const { publicSlug = '' } = useParams()
@@ -86,8 +80,7 @@ export const PublicPropertyPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [infoModalVariant, setInfoModalVariant] = useState<'welcome' | 'unavailable' | 'about' | null>(null)
-  const [hasShownWelcome, setHasShownWelcome] = useState(false)
+  const [calendarHint, setCalendarHint] = useState<string | null>(null)
 
   const loadAvailability = useCallback(async () => {
     if (!publicSlug) return
@@ -107,40 +100,7 @@ export const PublicPropertyPage = () => {
     void loadAvailability()
   }, [loadAvailability])
 
-  useEffect(() => {
-    if (data && !hasShownWelcome) {
-      setInfoModalVariant('welcome')
-      setHasShownWelcome(true)
-    }
-  }, [data, hasShownWelcome])
-
   const events = useMemo(() => (data ? toCalendarEvents(data) : []), [data])
-
-  const socialLinksContent = useMemo(() => {
-    if (!data) return null
-    const links: ReactNode[] = []
-    if (data.instagramUrl) {
-      links.push(
-        <a key="instagram" href={data.instagramUrl} target="_blank" rel="noopener noreferrer">
-          Instagram
-        </a>,
-      )
-    }
-    if (data.googlePhotosUrl) {
-      links.push(
-        <a key="google" href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
-          Google Fotos
-        </a>,
-      )
-    }
-    if (links.length === 0) return null
-    if (links.length === 1) return links[0]
-    return (
-      <>
-        {links[0]} y {links[1]}
-      </>
-    )
-  }, [data])
 
   const dayStatuses = useMemo(() => {
     const days = new Map<string, 'pending' | 'blocked'>()
@@ -197,11 +157,11 @@ export const PublicPropertyPage = () => {
       const overlapsBlocked = events.some((event) => rangesOverlap(event, start, end) && event.status !== 'declined')
       if (overlapsBlocked) {
         setFeedback(null)
-        setInfoModalVariant('unavailable')
+        setCalendarHint('Las fechas seleccionadas ya estan ocupadas o pendientes de confirmacion.')
         return
       }
 
-      setInfoModalVariant((current) => (current === 'unavailable' ? null : current))
+      setCalendarHint(null)
       setFeedback(null)
       setPendingRange({ start, end, displayEnd: new Date(displayEndRaw) })
       setModalError(null)
@@ -229,11 +189,10 @@ export const PublicPropertyPage = () => {
         requesterPhone: payload.phone,
         notes: payload.notes,
       })
-      const notificationSent = response.notificationSent
       setFeedback(
-        notificationSent
-          ? 'Tu solicitud quedó pendiente y avisamos al anfitrión por correo. Te contactarán a la brevedad.'
-          : 'Tu solicitud quedó pendiente. Comunícate con el anfitrión para que sepa que enviaste la reserva.',
+        response.notificationSent
+          ? 'Tu solicitud quedo pendiente y avisamos al anfitrion por correo.'
+          : 'Tu solicitud quedo pendiente. El anfitrion la revisara pronto.',
       )
       handleCloseModal()
       await loadAvailability()
@@ -245,7 +204,7 @@ export const PublicPropertyPage = () => {
   }
 
   return (
-    <div className="public-layout">
+    <div className="public-calendar-layout">
       {isLoading ? (
         <div className="loading">Cargando disponibilidad...</div>
       ) : error ? (
@@ -254,29 +213,30 @@ export const PublicPropertyPage = () => {
         </div>
       ) : data ? (
         <>
-          <header className="public-header">
-            <h1>{data.propertyName}</h1>
-            <p>Selecciona fechas disponibles para enviar una solicitud de reserva.</p>
-            {(data.instagramUrl || data.googlePhotosUrl) && (
-              <div className="public-social-logos" aria-label="Redes sociales">
-                {data.instagramUrl && (
-                  <a href={data.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                    <img src={instagramLogo} alt="" className="social-icon social-icon--instagram" />
-                  </a>
-                )}
-                {data.googlePhotosUrl && (
-                  <a href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer" aria-label="Google Fotos">
-                    <img src={googlePhotosLogo} alt="" className="social-icon social-icon--google" />
-                  </a>
-                )}
-              </div>
-            )}
-            {feedback && (
-              <div className="alert alert--inline" role="status">
-                <span>{feedback}</span>
-              </div>
-            )}
+          <header className="public-calendar-header">
+            <div>
+              <p className="promo-label">Calendario de reservas</p>
+              <h1>{data.propertyName}</h1>
+              <p>Selecciona fechas disponibles para solicitar tu reserva.</p>
+            </div>
+            <div className="public-calendar-header__actions">
+              <Link className="secondary" to={`/public/${data.publicSlug}`}>
+                Volver a la pagina
+              </Link>
+            </div>
           </header>
+
+          {calendarHint && (
+            <div className="alert alert--inline" role="status">
+              <span>{calendarHint}</span>
+            </div>
+          )}
+          {feedback && (
+            <div className="alert alert--inline" role="status">
+              <span>{feedback}</span>
+            </div>
+          )}
+
           <section className="calendar-card">
             <MultiMonthCalendar
               events={events}
@@ -286,13 +246,10 @@ export const PublicPropertyPage = () => {
               eventPropGetter={eventPropGetter}
               renderMonthEvent={renderPublicMonthEvent}
               dayPropGetter={dayPropGetter}
+              monthsToShow={1}
+              showNavigator
             />
           </section>
-          <div className="public-footer">
-            <button type="button" className="link-button" onClick={() => setInfoModalVariant('about')}>
-              Gestiona tus alquileres con SimpleAlquiler.net
-            </button>
-          </div>
         </>
       ) : null}
 
@@ -304,39 +261,6 @@ export const PublicPropertyPage = () => {
         isSubmitting={isSubmitting}
         errorMessage={modalError}
       />
-
-      <AboutAppModal
-        isOpen={infoModalVariant !== null}
-        onClose={() => setInfoModalVariant(null)}
-        title={
-          infoModalVariant === 'welcome'
-            ? 'Cómo usar este calendario'
-            : infoModalVariant === 'unavailable'
-              ? 'Fechas no disponibles'
-              : undefined
-        }
-        primaryLabel={infoModalVariant && infoModalVariant !== 'about' ? 'Entendido' : undefined}
-      >
-        {infoModalVariant === 'welcome' ? (
-          <>
-            <p>
-              Aquí puedes revisar la disponibilidad de {data?.propertyName ?? 'esta propiedad'} y enviar una solicitud de reserva
-              sin iniciar sesión.
-            </p>
-            <p>
-              Selecciona un rango de fechas disponible y completa el formulario para generar una reserva pendiente de validación. El
-              anfitrión revisará la solicitud antes de confirmarla.
-            </p>
-            {socialLinksContent && <p>Mira más detalles y fotos en {socialLinksContent}.</p>}
-          </>
-        ) : null}
-        {infoModalVariant === 'unavailable' ? (
-          <>
-            <p>Las fechas seleccionadas están reservadas o pendientes de confirmación.</p>
-            <p>Elige otro rango disponible y envía la solicitud para generar una reserva pendiente de validación.</p>
-          </>
-        ) : null}
-      </AboutAppModal>
     </div>
   )
 }
