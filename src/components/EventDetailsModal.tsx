@@ -19,9 +19,11 @@ interface EventDetailsModalProps {
   isOpen: boolean
   event: CalendarEvent | null
   onClose: () => void
+  onEdit?: () => void
   onDelete?: () => void
   onConfirm?: () => void
   onDecline?: () => void
+  onToggleCleaning?: () => void
   isProcessing?: boolean
   errorMessage?: string | null
 }
@@ -30,9 +32,11 @@ export const EventDetailsModal = ({
   isOpen,
   event,
   onClose,
+  onEdit,
   onDelete,
   onConfirm,
   onDecline,
+  onToggleCleaning,
   isProcessing = false,
   errorMessage,
 }: EventDetailsModalProps) => {
@@ -41,6 +45,8 @@ export const EventDetailsModal = ({
   }
 
   const showRequesterInfo = event.source === 'public'
+  const cleaningStatusLabel =
+    event.cleaningStatus === 'pending' ? 'Pendiente' : event.cleaningStatus === 'done' ? 'Lista' : 'Sin definir'
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -56,6 +62,12 @@ export const EventDetailsModal = ({
             <dt>Origen</dt>
             <dd>{event.source === 'airbnb' ? 'Airbnb (sincronizado)' : event.source === 'public' ? 'Solicitud pública' : 'Manual'}</dd>
           </div>
+          {event.status === 'confirmed' && (
+            <div>
+              <dt>Limpieza</dt>
+              <dd>{cleaningStatusLabel}</dd>
+            </div>
+          )}
           {event.description && (
             <div>
               <dt>Descripción</dt>
@@ -104,6 +116,11 @@ export const EventDetailsModal = ({
           <button type="button" className="secondary" onClick={onClose} disabled={isProcessing}>
             Cerrar
           </button>
+          {onEdit && (
+            <button type="button" className="secondary" onClick={onEdit} disabled={isProcessing}>
+              Editar
+            </button>
+          )}
           {onDecline && (
             <button type="button" className="secondary" onClick={onDecline} disabled={isProcessing}>
               Declinar
@@ -112,6 +129,11 @@ export const EventDetailsModal = ({
           {onConfirm && (
             <button type="button" className="primary" onClick={onConfirm} disabled={isProcessing}>
               Aceptar solicitud
+            </button>
+          )}
+          {onToggleCleaning && event.status === 'confirmed' && (
+            <button type="button" className="secondary" onClick={onToggleCleaning} disabled={isProcessing}>
+              {event.cleaningStatus === 'pending' ? 'Marcar limpieza lista' : 'Marcar limpieza pendiente'}
             </button>
           )}
           {onDelete && (

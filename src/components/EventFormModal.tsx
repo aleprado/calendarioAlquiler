@@ -8,6 +8,8 @@ interface EventFormModalProps {
   onCancel: () => void
   isSubmitting?: boolean
   errorMessage?: string | null
+  mode?: 'create' | 'edit'
+  initialValues?: { title?: string; description?: string; location?: string } | null
 }
 
 const formatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' })
@@ -71,6 +73,8 @@ export const EventFormModal = ({
   onCancel,
   isSubmitting = false,
   errorMessage,
+  mode = 'create',
+  initialValues,
 }: EventFormModalProps) => {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -82,15 +86,15 @@ export const EventFormModal = ({
 
   useEffect(() => {
     if (isOpen && range) {
-      setTitle('')
-      setDescription('')
-      setLocation('')
+      setTitle(initialValues?.title ?? '')
+      setDescription(initialValues?.description ?? '')
+      setLocation(initialValues?.location ?? '')
       setStartDate(toDateInputValue(range.start))
       setEndDate(toDateInputValue(range.displayEnd))
       setLocalError(null)
       inputRef.current?.focus()
     }
-  }, [isOpen, range])
+  }, [initialValues?.description, initialValues?.location, initialValues?.title, isOpen, range])
 
   if (!isOpen || !range) {
     return null
@@ -134,7 +138,7 @@ export const EventFormModal = ({
   return (
     <div className="modal-backdrop" role="presentation">
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <h2 id="modal-title">Nuevo evento</h2>
+        <h2 id="modal-title">{mode === 'edit' ? 'Editar evento' : 'Nuevo evento'}</h2>
         <p className="modal-range">{rangeLabel}</p>
         <form onSubmit={handleSubmit} className="modal-form">
           <label htmlFor="event-start-date">Fecha de inicio</label>
@@ -200,7 +204,7 @@ export const EventFormModal = ({
               Cancelar
             </button>
             <button type="submit" className="primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Crear evento'}
+              {isSubmitting ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear evento'}
             </button>
           </div>
         </form>

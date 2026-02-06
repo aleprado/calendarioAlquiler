@@ -3,10 +3,12 @@ import { downloadIcs, parseAirbnbIcs } from '../airbnb'
 import type { AirbnbCalendarEvent } from '../types'
 import {
   eventRepository,
+  type CleaningStatus,
   type CreateManualEventInput,
   type CreatePublicRequestInput,
   type EventStatus,
   type PersistedEvent,
+  type UpdateEventInput,
 } from '../repositories/eventRepository'
 import { sendReservationRequestEmail } from './emailService'
 import { propertyService } from './propertyService'
@@ -95,15 +97,55 @@ export class EventService {
     eventId: string,
     status: Exclude<EventStatus, 'tentative'>,
   ) {
-    await propertyService.getOwnedProperty(userId, propertyId)
-    return await eventRepository.updateStatus(propertyId, eventId, status)
+    return this.updateEvent(userId, propertyId, eventId, { status })
   }
 
-  private async ensureAvailability(propertyId: string, startIso: string, endIso: string) {
+  async updateEvent(
+    userId: string,
+    propertyId: string,
+    eventId: string,
+    updates: {
+      status?: Exclude<EventStatus, 'tentative'>
+      cleaningStatus?: CleaningStatus
+      title?: string
+      start?: string
+      end?: string
+      description?: string | null
+      location?: string | null
+    },
+  ) {
+    await propertyService.getOwnedProperty(userId, propertyId)
+    const existing = await eventRepository.findById(propertyId, eventId)
+    if (!existing) {
+      throw new ServiceError('Evento no encontrado', 404)
+    }
+
+    const isDetailEdit =
+      updates.title !== undefined ||
+      updates.start !== undefined ||
+      updates.end !== undefined ||
+      updates.description !== undefined ||
+      updates.location !== undefined
+
+    if (isDetailEdit && existing.source === 'airbnb') {
+      throw new ServiceError('Los eventos de Airbnb se actualizan desde la sincronización.', 400)
+    }
+
+    if (updates.start !== undefined && updates.end !== undefined) {
+      await this.ensureAvailability(propertyId, updates.start, updates.end, eventId)
+    }
+
+    return await eventRepository.update(propertyId, eventId, updates as UpdateEventInput)
+  }
+
+  private async ensureAvailability(propertyId: string, startIso: string, endIso: string, skipEventId?: string) {
     const requestedRange = parseIsoRange(startIso, endIso)
     const events = await eventRepository.list(propertyId)
 
     const conflict = events.find((event) => {
+      if (skipEventId && event.id === skipEventId) {
+        return false
+      }
       if (!blockingStatuses.includes(event.status)) {
         return false
       }

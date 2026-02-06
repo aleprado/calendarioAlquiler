@@ -79,14 +79,38 @@ export const MultiMonthCalendar = ({
     <div className="multi-month-calendar">
       {showNavigator && (
         <div className="calendar-navigator">
-          <button type="button" className="secondary" onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, -1))}>
-            Mes anterior
+          <button
+            type="button"
+            className="secondary calendar-navigator__button calendar-navigator__button--prev"
+            onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, -1))}
+            aria-label="Mes anterior"
+          >
+            <span className="calendar-navigator__icon" aria-hidden="true">
+              ←
+            </span>
+            <span className="calendar-navigator__label">Mes anterior</span>
           </button>
-          <button type="button" className="secondary" onClick={() => setAnchorMonth(todayMonth)}>
-            Hoy
+          <button
+            type="button"
+            className="secondary calendar-navigator__button calendar-navigator__button--today"
+            onClick={() => setAnchorMonth(todayMonth)}
+            aria-label="Ir al mes actual"
+          >
+            <span className="calendar-navigator__icon" aria-hidden="true">
+              ●
+            </span>
+            <span className="calendar-navigator__label">Hoy</span>
           </button>
-          <button type="button" className="secondary" onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, 1))}>
-            Mes siguiente
+          <button
+            type="button"
+            className="secondary calendar-navigator__button calendar-navigator__button--next"
+            onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, 1))}
+            aria-label="Mes siguiente"
+          >
+            <span className="calendar-navigator__icon" aria-hidden="true">
+              →
+            </span>
+            <span className="calendar-navigator__label">Mes siguiente</span>
           </button>
         </div>
       )}

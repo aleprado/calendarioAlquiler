@@ -280,17 +280,46 @@ export const DashboardPage = () => {
       const trimmedPinUrl = editForm.googleMapsPinUrl.trim()
       const trimmedPlaceId = editForm.googleMapsPlaceId.trim()
       const trimmedReviewsUrl = editForm.googleMapsReviewsUrl.trim()
+      const parsedLat = parseOptionalCoordinate(editForm.googleMapsLat)
+      const parsedLng = parseOptionalCoordinate(editForm.googleMapsLng)
+
+      let effectivePlaceId = trimmedPlaceId || null
+      let effectiveLat = parsedLat
+      let effectiveLng = parsedLng
+      let effectiveLocationLabel = trimmedLocationLabel || null
+
+      if (trimmedPinUrl && !effectivePlaceId && effectiveLat === null && effectiveLng === null) {
+        try {
+          const resolved = await resolveGoogleMapsLinkApi(trimmedPinUrl)
+          effectivePlaceId = resolved.googleMapsPlaceId ?? effectivePlaceId
+          effectiveLat = resolved.googleMapsLat ?? effectiveLat
+          effectiveLng = resolved.googleMapsLng ?? effectiveLng
+          effectiveLocationLabel = resolved.locationLabel ?? effectiveLocationLabel
+          setMapResolveFeedback('Pin detectado automáticamente al guardar.')
+          setEditForm((prev) => ({
+            ...prev,
+            googleMapsPinUrl: resolved.resolvedUrl || prev.googleMapsPinUrl,
+            googleMapsPlaceId: resolved.googleMapsPlaceId ?? prev.googleMapsPlaceId,
+            googleMapsLat: resolved.googleMapsLat !== null ? String(resolved.googleMapsLat) : prev.googleMapsLat,
+            googleMapsLng: resolved.googleMapsLng !== null ? String(resolved.googleMapsLng) : prev.googleMapsLng,
+            locationLabel: resolved.locationLabel ?? prev.locationLabel,
+          }))
+        } catch {
+          // Keep manual data if automatic resolution fails.
+        }
+      }
+
       const updated = await updateProperty(selectedProperty.id, {
         name: editForm.name.trim(),
         airbnbIcalUrl: editForm.airbnbIcalUrl.trim(),
         instagramUrl: trimmedInstagramUrl ? trimmedInstagramUrl : null,
         googlePhotosUrl: trimmedGoogleUrl ? trimmedGoogleUrl : null,
         description: trimmedDescription ? trimmedDescription : null,
-        locationLabel: trimmedLocationLabel ? trimmedLocationLabel : null,
+        locationLabel: effectiveLocationLabel,
         googleMapsPinUrl: trimmedPinUrl ? trimmedPinUrl : null,
-        googleMapsPlaceId: trimmedPlaceId ? trimmedPlaceId : null,
-        googleMapsLat: parseOptionalCoordinate(editForm.googleMapsLat),
-        googleMapsLng: parseOptionalCoordinate(editForm.googleMapsLng),
+        googleMapsPlaceId: effectivePlaceId,
+        googleMapsLat: effectiveLat,
+        googleMapsLng: effectiveLng,
         showGoogleReviews: editForm.showGoogleReviews,
         googleMapsReviewsUrl: trimmedReviewsUrl ? trimmedReviewsUrl : null,
         galleryImageUrls: parseUrlList(editForm.galleryImageUrls),

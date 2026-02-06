@@ -4,16 +4,6 @@ import { fetchPublicAvailability } from '../api/public'
 import type { PublicAvailabilityDTO } from '../types'
 
 const MAPS_EMBED_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY as string | undefined)?.trim() ?? ''
-const INSTAGRAM_EMBED_SCRIPT_ID = 'instagram-embed-script'
-const INSTAGRAM_EMBED_SCRIPT_SRC = 'https://www.instagram.com/embed.js'
-
-type InstagramWindow = Window & {
-  instgrm?: {
-    Embeds?: {
-      process: () => void
-    }
-  }
-}
 
 const buildSearchMapUrl = (query: string) =>
   `https://www.google.com/maps?hl=es&q=${encodeURIComponent(query)}&z=16&output=embed`
@@ -53,12 +43,33 @@ const buildInstagramEmbedPermalink = (value: string) => {
   }
 }
 
-const buildEmbedMapUrl = (data: PublicAvailabilityDTO) => {
-  if (data.googleMapsPlaceId) {
-    if (MAPS_EMBED_API_KEY) {
-      return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(MAPS_EMBED_API_KEY)}&q=place_id:${encodeURIComponent(data.googleMapsPlaceId)}`
+const buildInstagramEmbedUrl = (permalink: string) => `${permalink}embed/captioned/`
+
+const extractMapQueryFromPinUrl = (value: string) => {
+  if (!isLikelyUrl(value)) return null
+  try {
+    const parsed = new URL(value)
+    const query = parsed.searchParams.get('q') ?? parsed.searchParams.get('query') ?? ''
+    if (query.trim()) return query.trim()
+
+    const coordsInPath = parsed.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+    if (coordsInPath?.[1] && coordsInPath[2]) {
+      return `${coordsInPath[1]},${coordsInPath[2]}`
     }
-    return buildSearchMapUrl(`place_id:${data.googleMapsPlaceId}`)
+
+    const placePath = parsed.pathname.match(/\/place\/([^/]+)/)
+    if (placePath?.[1]) {
+      return decodeURIComponent(placePath[1]).replace(/\+/g, ' ').trim()
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+const buildEmbedMapUrl = (data: PublicAvailabilityDTO) => {
+  if (MAPS_EMBED_API_KEY && data.googleMapsPlaceId) {
+    return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(MAPS_EMBED_API_KEY)}&q=place_id:${encodeURIComponent(data.googleMapsPlaceId)}`
   }
 
   if (typeof data.googleMapsLat === 'number' && typeof data.googleMapsLng === 'number') {
@@ -66,6 +77,15 @@ const buildEmbedMapUrl = (data: PublicAvailabilityDTO) => {
   }
 
   if (data.locationLabel && !isLikelyUrl(data.locationLabel)) return buildSearchMapUrl(data.locationLabel)
+
+  if (data.googleMapsPinUrl) {
+    const queryFromPin = extractMapQueryFromPinUrl(data.googleMapsPinUrl)
+    if (queryFromPin) return buildSearchMapUrl(queryFromPin)
+  }
+
+  if (data.googleMapsPlaceId) {
+    return buildSearchMapUrl(data.googleMapsPlaceId)
+  }
 
   return null
 }
@@ -136,32 +156,6 @@ export const PublicPromoPage = () => {
   const instagramUsername = getInstagramUsername(data?.instagramUrl ?? null)
 
   useEffect(() => {
-    if (instagramEmbedPermalinks.length === 0) return
-    const instagramWindow = window as InstagramWindow
-    const processEmbeds = () => {
-      instagramWindow.instgrm?.Embeds?.process()
-    }
-
-    const existingScript = document.getElementById(INSTAGRAM_EMBED_SCRIPT_ID) as HTMLScriptElement | null
-    if (existingScript) {
-      if (instagramWindow.instgrm?.Embeds?.process) {
-        processEmbeds()
-        return
-      }
-      existingScript.addEventListener('load', processEmbeds, { once: true })
-      return () => existingScript.removeEventListener('load', processEmbeds)
-    }
-
-    const script = document.createElement('script')
-    script.id = INSTAGRAM_EMBED_SCRIPT_ID
-    script.async = true
-    script.src = INSTAGRAM_EMBED_SCRIPT_SRC
-    script.addEventListener('load', processEmbeds, { once: true })
-    document.body.appendChild(script)
-    return () => script.removeEventListener('load', processEmbeds)
-  }, [instagramEmbedPermalinks])
-
-  useEffect(() => {
     if (!data || images.length < 2) return
     const timer = window.setInterval(() => {
       setActiveGalleryIndex((current) => (current + 1) % images.length)
@@ -216,15 +210,16 @@ export const PublicPromoPage = () => {
             </div>
 
             <div className="promo-hero__content promo-hero__content--brochure">
-              <p className="promo-label">Estadia vacacional</p>
+              <p className="promo-label">simplealquiler.net</p>
               <h1>{data.propertyName}</h1>
+              <p className="promo-hero__lead">Hospedaje cerca del mar para desconectar y reservar directo con el anfitrion.</p>
               <p className="promo-hero__description">
                 {data.description ?? 'Alojamiento pensado para descansar, disfrutar la zona y reservar directo desde esta misma página.'}
               </p>
 
               <div className="promo-hero__actions">
                 <Link className="primary" to={`/public/${data.publicSlug}/calendario`}>
-                  Ver disponibilidad
+                  Ver calendario y disponibilidad
                 </Link>
               </div>
 
@@ -362,18 +357,17 @@ export const PublicPromoPage = () => {
               <div className="instagram-preview-grid">
                 {instagramEmbedPermalinks.map((permalink, index) => (
                   <article key={`${permalink}-${index}`} className="instagram-preview-card">
-                    <blockquote
-                      className="instagram-media"
-                      data-instgrm-captioned=""
-                      data-instgrm-permalink={`${permalink}?utm_source=ig_embed&utm_campaign=loading`}
-                      data-instgrm-version="14"
-                    >
-                      <a href={permalink} target="_blank" rel="noopener noreferrer">
-                        Ver publicación {index + 1}
-                      </a>
-                    </blockquote>
-                    <a className="secondary" href={permalink} target="_blank" rel="noopener noreferrer">
-                      Abrir en Instagram
+                    <div className="instagram-preview-card__media">
+                      <iframe
+                        title={`Publicación de Instagram ${index + 1}`}
+                        src={buildInstagramEmbedUrl(permalink)}
+                        loading="lazy"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    </div>
+                    <a className="promo-location-link promo-location-link--soft" href={permalink} target="_blank" rel="noopener noreferrer">
+                      Ver en Instagram
+                      <span aria-hidden="true">↗</span>
                     </a>
                   </article>
                 ))}

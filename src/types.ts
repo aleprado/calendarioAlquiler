@@ -1,6 +1,7 @@
 export type EventSource = 'manual' | 'airbnb' | 'public'
 
 export type EventStatus = 'pending' | 'confirmed' | 'tentative' | 'declined'
+export type CleaningStatus = 'pending' | 'done'
 
 export interface CalendarEventDTO {
   id: string
@@ -9,6 +10,7 @@ export interface CalendarEventDTO {
   end: string
   source: EventSource
   status: EventStatus
+  cleaningStatus?: CleaningStatus
   description?: string
   location?: string
   requesterName?: string
@@ -24,6 +26,7 @@ export interface CalendarEvent {
   end: Date
   source: EventSource
   status: EventStatus
+  cleaningStatus?: CleaningStatus
   description?: string
   location?: string
   requesterName?: string
@@ -42,6 +45,16 @@ export interface NewEventPayload {
 
 export interface UpdateEventStatusPayload {
   status: Extract<EventStatus, 'pending' | 'confirmed' | 'declined'>
+}
+
+export interface UpdateEventPayload {
+  status?: Extract<EventStatus, 'pending' | 'confirmed' | 'declined'>
+  cleaningStatus?: CleaningStatus
+  title?: string
+  start?: string
+  end?: string
+  description?: string | null
+  location?: string | null
 }
 
 export interface PropertyDTO {

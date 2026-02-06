@@ -6,7 +6,7 @@ import { EventFormModal } from './EventFormModal'
 import { EventDetailsModal } from './EventDetailsModal'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
-import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEventStatus } from '../api/events'
+import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEvent, updateEventStatus } from '../api/events'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -39,6 +39,13 @@ const eventStatusLabel = (event: CalendarEvent) => {
   return 'Declinado'
 }
 
+const eventCleaningLabel = (event: CalendarEvent) => {
+  if (event.status !== 'confirmed') return 'Limpieza N/A'
+  if (event.cleaningStatus === 'pending') return 'Limpieza pendiente'
+  if (event.cleaningStatus === 'done') return 'Limpieza lista'
+  return 'Limpieza sin definir'
+}
+
 const eventSourceLabel = (event: CalendarEvent) => {
   if (event.source === 'airbnb') return 'Airbnb'
   if (event.source === 'public') return 'Solicitud web'
@@ -66,6 +73,8 @@ const rangesOverlap = (a: CalendarEvent, b: CalendarEvent) => {
 const isAirbnb = (e: CalendarEvent) => e.source === 'airbnb'
 const behavesAsManual = (e: CalendarEvent) => e.source === 'manual' || (e.source === 'public' && e.status === 'confirmed')
 const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && e.status === 'confirmed'
+const hasPendingCleaning = (event: Pick<CalendarEvent, 'status' | 'cleaningStatus'>) =>
+  event.status === 'confirmed' && event.cleaningStatus === 'pending'
 
 type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
@@ -114,6 +123,7 @@ const toCalendarEvent = (dto: CalendarEventDTO): CalendarEvent => {
     end: normalized.end,
     source,
     status: dto.status ?? 'confirmed',
+    cleaningStatus: dto.cleaningStatus,
     description: dto.description,
     location: dto.location,
     requesterName: dto.requesterName,
@@ -162,7 +172,12 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior,
 
   if (event.source === 'airbnb') {
     const label = event.status === 'tentative' ? 'Tentativo en Airbnb' : 'Reservado en Airbnb'
-    return <div className={baseClassName}>{label}</div>
+    return (
+      <div className={baseClassName}>
+        {hasPendingCleaning(event) && <span className="cleaning-dot" aria-hidden="true" />}
+        {label}
+      </div>
+    )
   }
 
   if (event.source === 'public' && !behavesAsManual(event)) {
@@ -186,6 +201,7 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior,
 
   return (
     <div className={baseClassName}>
+      {hasPendingCleaning(event) && <span className="cleaning-dot" aria-hidden="true" />}
       <strong>{title}</strong> — {badge}
     </div>
   )
@@ -238,6 +254,7 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [pendingRange, setPendingRange] = useState<{ start: Date; end: Date; displayEnd: Date } | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -300,6 +317,7 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
 
   const handleSelectSlot = useCallback((slot: SlotInfo) => {
     setPendingRange(normalizeSelectionRange(slot.start, slot.end))
+    setEditingEvent(null)
     setModalError(null)
     setIsModalOpen(true)
   }, [])
@@ -307,6 +325,7 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   const handleOpenNewEventModal = useCallback(() => {
     const today = startOfDayLocal(new Date())
     setPendingRange(normalizeSelectionRange(today, addDays(today, 1)))
+    setEditingEvent(null)
     setModalError(null)
     setIsModalOpen(true)
   }, [])
@@ -314,44 +333,84 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false)
     setPendingRange(null)
+    setEditingEvent(null)
     setModalError(null)
   }, [])
 
-  const handleCreateEvent = useCallback(
+  const handleSaveEvent = useCallback(
     async (payload: { title: string; description?: string; location?: string; start: Date; end: Date }) => {
       setIsSubmitting(true)
       setModalError(null)
       try {
-        const createdEvent = await createEvent(property.id, {
-          title: payload.title,
-          start: payload.start.toISOString(),
-          end: payload.end.toISOString(),
-          description: payload.description,
-          location: payload.location,
-        })
-        setEvents((prev) => {
-          const next = [...prev, toCalendarEvent(createdEvent)]
-          return next.sort((a, b) => a.start.getTime() - b.start.getTime())
-        })
+        if (editingEvent) {
+          const updatedEvent = await updateEvent(property.id, editingEvent.id, {
+            title: payload.title,
+            start: payload.start.toISOString(),
+            end: payload.end.toISOString(),
+            description: payload.description?.trim() ? payload.description.trim() : null,
+            location: payload.location?.trim() ? payload.location.trim() : null,
+          })
+          const mapped = toCalendarEvent(updatedEvent)
+          setEvents((prev) => prev.map((event) => (event.id === mapped.id ? mapped : event)))
+          setSelectedEvent((current) => (current && current.id === mapped.id ? mapped : current))
+        } else {
+          const createdEvent = await createEvent(property.id, {
+            title: payload.title,
+            start: payload.start.toISOString(),
+            end: payload.end.toISOString(),
+            description: payload.description?.trim() ? payload.description.trim() : undefined,
+            location: payload.location?.trim() ? payload.location.trim() : undefined,
+          })
+          setEvents((prev) => {
+            const next = [...prev, toCalendarEvent(createdEvent)]
+            return next.sort((a, b) => a.start.getTime() - b.start.getTime())
+          })
+        }
         handleCloseModal()
       } catch (error) {
-        setModalError(error instanceof Error ? error.message : 'No se pudo crear el evento.')
+        setModalError(error instanceof Error ? error.message : 'No se pudo guardar el evento.')
       } finally {
         setIsSubmitting(false)
       }
     },
-    [handleCloseModal, property.id],
+    [editingEvent, handleCloseModal, property.id],
   )
 
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
+  const handleOpenEventDetails = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event)
     setEventError(null)
   }, [])
+
+  const openEditModalForEvent = useCallback((event: CalendarEvent) => {
+    if (event.source === 'airbnb' || (event.source === 'public' && event.status === 'pending')) {
+      handleOpenEventDetails(event)
+      return
+    }
+    setPendingRange(normalizeSelectionRange(event.start, event.end))
+    setEditingEvent(event)
+    setModalError(null)
+    setEventError(null)
+    setSelectedEvent(null)
+    setIsModalOpen(true)
+  }, [handleOpenEventDetails])
+
+  const handleSelectCalendarEvent = useCallback((event: CalendarEvent) => {
+    openEditModalForEvent(event)
+  }, [openEditModalForEvent])
 
   const closeDetails = useCallback(() => {
     setSelectedEvent(null)
     setEventError(null)
   }, [])
+
+  const handleOpenEditModal = useCallback(() => {
+    if (!selectedEvent || selectedEvent.source === 'airbnb') return
+    setPendingRange(normalizeSelectionRange(selectedEvent.start, selectedEvent.end))
+    setEditingEvent(selectedEvent)
+    setModalError(null)
+    setIsModalOpen(true)
+    setSelectedEvent(null)
+  }, [selectedEvent])
 
   const updateEventInState = useCallback((updated: CalendarEvent) => {
     setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
@@ -393,6 +452,23 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
     }
   }, [property.id, selectedEvent, updateEventInState])
 
+  const handleToggleCleaning = useCallback(async () => {
+    if (!selectedEvent || selectedEvent.status !== 'confirmed') return
+    setIsProcessingEvent(true)
+    setEventError(null)
+    try {
+      const nextCleaningStatus = selectedEvent.cleaningStatus === 'pending' ? 'done' : 'pending'
+      const updated = await updateEvent(property.id, selectedEvent.id, { cleaningStatus: nextCleaningStatus })
+      const mapped = toCalendarEvent(updated)
+      updateEventInState(mapped)
+      setSelectedEvent(mapped)
+    } catch (error) {
+      setEventError(error instanceof Error ? error.message : 'No se pudo actualizar la limpieza.')
+    } finally {
+      setIsProcessingEvent(false)
+    }
+  }, [property.id, selectedEvent, updateEventInState])
+
   const handleDeleteEvent = useCallback(async () => {
     if (!selectedEvent) return
     const shouldDelete = window.confirm(`¿Eliminar el evento "${selectedEvent.title}"?`)
@@ -419,6 +495,8 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
 
   const canDelete = selectedEvent && selectedEvent.source !== 'airbnb'
   const canManageRequest = selectedEvent && selectedEvent.source === 'public' && selectedEvent.status === 'pending'
+  const canToggleCleaning = selectedEvent && selectedEvent.status === 'confirmed'
+  const canEditEvent = selectedEvent && selectedEvent.source !== 'airbnb'
 
   return (
     <section className="property-workspace">
@@ -451,7 +529,7 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
             events={visibleEvents}
             messages={calendarMessages}
             onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectEvent}
+            onSelectEvent={handleSelectCalendarEvent}
             eventPropGetter={eventPropGetter}
             renderMonthEvent={MonthEventRenderer}
             monthsToShow={1}
@@ -473,11 +551,15 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
           <ul className="month-events-list">
             {monthEvents.map((event) => (
               <li key={event.id}>
-                <button type="button" onClick={() => handleSelectEvent(event)} className="month-events-list__item">
+                <button type="button" onClick={() => handleOpenEventDetails(event)} className="month-events-list__item">
                   <span className="month-events-list__range">{getEventListRangeLabel(event)}</span>
-                  <strong className="month-events-list__title">{event.title || 'Reserva'}</strong>
+                  <strong className="month-events-list__title">
+                    {hasPendingCleaning(event) && <span className="cleaning-dot" aria-hidden="true" />}
+                    {event.title || 'Reserva'}
+                  </strong>
                   <span className="month-events-list__meta">
                     {eventSourceLabel(event)} · {eventStatusLabel(event)}
+                    {event.status === 'confirmed' ? ` · ${eventCleaningLabel(event)}` : ''}
                   </span>
                 </button>
               </li>
@@ -489,7 +571,17 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
       <EventFormModal
         isOpen={isModalOpen && Boolean(pendingRange)}
         range={pendingRange}
-        onSubmit={handleCreateEvent}
+        mode={editingEvent ? 'edit' : 'create'}
+        initialValues={
+          editingEvent
+            ? {
+                title: editingEvent.title,
+                description: editingEvent.description,
+                location: editingEvent.location,
+              }
+            : null
+        }
+        onSubmit={handleSaveEvent}
         onCancel={handleCloseModal}
         isSubmitting={isSubmitting}
         errorMessage={modalError}
@@ -499,9 +591,11 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
         isOpen={Boolean(selectedEvent)}
         event={selectedEvent}
         onClose={closeDetails}
+        onEdit={canEditEvent ? handleOpenEditModal : undefined}
         onDelete={canDelete ? handleDeleteEvent : undefined}
         onConfirm={canManageRequest ? handleConfirmRequest : undefined}
         onDecline={canManageRequest ? handleDeclineRequest : undefined}
+        onToggleCleaning={canToggleCleaning ? handleToggleCleaning : undefined}
         isProcessing={isProcessingEvent}
         errorMessage={eventError}
       />

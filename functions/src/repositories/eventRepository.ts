@@ -1,8 +1,10 @@
 import type { AirbnbCalendarEvent } from '../types'
+import { FieldValue } from '@google-cloud/firestore'
 import { eventsCollection } from '../firestore'
 
 export type EventSource = 'manual' | 'airbnb' | 'public'
 export type EventStatus = 'pending' | 'confirmed' | 'tentative' | 'declined'
+export type CleaningStatus = 'pending' | 'done'
 
 export interface PersistedEvent {
   id: string
@@ -11,6 +13,7 @@ export interface PersistedEvent {
   end: string
   source: EventSource
   status: EventStatus
+  cleaningStatus?: CleaningStatus
   createdAt: string
   updatedAt: string
   externalId?: string
@@ -39,6 +42,16 @@ export interface CreatePublicRequestInput {
   notes?: string
 }
 
+export interface UpdateEventInput {
+  status?: Exclude<EventStatus, 'tentative'>
+  cleaningStatus?: CleaningStatus
+  title?: string
+  start?: string
+  end?: string
+  description?: string | null
+  location?: string | null
+}
+
 const toPersisted = (doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot) => {
   if (!doc.exists) return null
   return { id: doc.id, ...(doc.data() as Omit<PersistedEvent, 'id'>) }
@@ -63,6 +76,7 @@ export class EventRepository {
       end: input.end,
       source: 'manual',
       status: 'confirmed',
+      cleaningStatus: 'pending',
       createdAt: now,
       updatedAt: now,
       description: input.description,
@@ -94,11 +108,7 @@ export class EventRepository {
     return { id: docRef.id, ...payload }
   }
 
-  async updateStatus(
-    propertyId: string,
-    eventId: string,
-    status: Exclude<EventStatus, 'tentative'>,
-  ): Promise<PersistedEvent> {
+  async update(propertyId: string, eventId: string, updates: UpdateEventInput): Promise<PersistedEvent> {
     const docRef = eventsCollection(propertyId).doc(eventId)
     const snapshot = await docRef.get()
     const existing = toPersisted(snapshot)
@@ -106,13 +116,86 @@ export class EventRepository {
       throw new Error('Evento no encontrado')
     }
 
-    const payload: Partial<PersistedEvent> = {
-      status,
-      updatedAt: new Date().toISOString(),
+    const nextStatus = updates.status ?? existing.status
+    const nextCleaningStatus =
+      updates.cleaningStatus ??
+      (updates.status
+        ? updates.status === 'confirmed'
+          ? existing.cleaningStatus ?? 'pending'
+          : undefined
+        : existing.cleaningStatus)
+
+    const updatedAt = new Date().toISOString()
+    const payload: Record<string, unknown> = { updatedAt }
+    if (updates.status !== undefined) {
+      payload.status = nextStatus
     }
+    if (updates.title !== undefined) {
+      payload.title = updates.title
+    }
+    if (updates.start !== undefined) {
+      payload.start = updates.start
+    }
+    if (updates.end !== undefined) {
+      payload.end = updates.end
+    }
+    if (updates.description !== undefined) {
+      const normalized = updates.description?.trim()
+      if (normalized && normalized.length > 0) {
+        payload.description = normalized
+      } else {
+        payload.description = FieldValue.delete()
+      }
+    }
+    if (updates.location !== undefined) {
+      const normalized = updates.location?.trim()
+      if (normalized && normalized.length > 0) {
+        payload.location = normalized
+      } else {
+        payload.location = FieldValue.delete()
+      }
+    }
+    payload.cleaningStatus = nextCleaningStatus ?? FieldValue.delete()
 
     await docRef.set(payload, { merge: true })
-    return { ...existing, ...payload }
+    const merged: PersistedEvent = {
+      ...existing,
+      ...(updates.status !== undefined ? { status: nextStatus } : {}),
+      ...(updates.title !== undefined ? { title: updates.title } : {}),
+      ...(updates.start !== undefined ? { start: updates.start } : {}),
+      ...(updates.end !== undefined ? { end: updates.end } : {}),
+      updatedAt,
+    }
+    if (updates.description !== undefined) {
+      const normalized = updates.description?.trim()
+      if (normalized) {
+        merged.description = normalized
+      } else {
+        delete merged.description
+      }
+    }
+    if (updates.location !== undefined) {
+      const normalized = updates.location?.trim()
+      if (normalized) {
+        merged.location = normalized
+      } else {
+        delete merged.location
+      }
+    }
+    if (nextCleaningStatus) {
+      merged.cleaningStatus = nextCleaningStatus
+    } else {
+      delete merged.cleaningStatus
+    }
+    return merged
+  }
+
+  async updateStatus(
+    propertyId: string,
+    eventId: string,
+    status: Exclude<EventStatus, 'tentative'>,
+  ): Promise<PersistedEvent> {
+    return this.update(propertyId, eventId, { status })
   }
 
   async delete(propertyId: string, eventId: string): Promise<void> {
@@ -128,10 +211,19 @@ export class EventRepository {
     const batch = collectionRef.firestore.batch()
 
     const existing = await collectionRef.where('source', '==', 'airbnb').get()
-    existing.docs.forEach((doc) => batch.delete(doc.ref))
+    const cleaningByExternalId = new Map<string, CleaningStatus>()
+    existing.docs.forEach((doc) => {
+      const data = doc.data() as Partial<PersistedEvent>
+      if (typeof data.externalId === 'string' && (data.cleaningStatus === 'pending' || data.cleaningStatus === 'done')) {
+        cleaningByExternalId.set(data.externalId, data.cleaningStatus)
+      }
+      batch.delete(doc.ref)
+    })
 
     const now = new Date().toISOString()
     ;[...confirmed, ...tentative].forEach((event) => {
+      const preservedCleaning = cleaningByExternalId.get(event.uid)
+      const cleaningStatus = event.status === 'confirmed' ? preservedCleaning ?? 'pending' : undefined
       const docRef = collectionRef.doc()
       batch.set(docRef, {
         title: event.summary,
@@ -139,6 +231,7 @@ export class EventRepository {
         end: event.end.toISOString(),
         source: 'airbnb',
         status: event.status,
+        cleaningStatus,
         createdAt: now,
         updatedAt: now,
         externalId: event.uid,

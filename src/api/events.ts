@@ -1,5 +1,5 @@
 import { apiRequest } from './http'
-import type { CalendarEventDTO, NewEventPayload, SyncAirbnbPayload, UpdateEventStatusPayload } from '../types'
+import type { CalendarEventDTO, NewEventPayload, SyncAirbnbPayload, UpdateEventPayload, UpdateEventStatusPayload } from '../types'
 
 const buildPath = (propertyId: string, suffix: string) => `/properties/${encodeURIComponent(propertyId)}${suffix}`
 
@@ -20,10 +20,10 @@ export const createEvent = async (propertyId: string, payload: NewEventPayload):
   return data.event
 }
 
-export const updateEventStatus = async (
+export const updateEvent = async (
   propertyId: string,
   eventId: string,
-  payload: UpdateEventStatusPayload,
+  payload: UpdateEventPayload,
 ): Promise<CalendarEventDTO> => {
   const data = await apiRequest<{ event: CalendarEventDTO }>(buildPath(propertyId, `/events/${encodeURIComponent(eventId)}`), {
     method: 'PATCH',
@@ -35,6 +35,12 @@ export const updateEventStatus = async (
   }
   return data.event
 }
+
+export const updateEventStatus = async (
+  propertyId: string,
+  eventId: string,
+  payload: UpdateEventStatusPayload,
+): Promise<CalendarEventDTO> => updateEvent(propertyId, eventId, payload)
 
 export const deleteEvent = async (propertyId: string, eventId: string): Promise<void> => {
   await apiRequest(buildPath(propertyId, `/events/${encodeURIComponent(eventId)}`), {

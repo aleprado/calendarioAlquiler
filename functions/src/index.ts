@@ -92,9 +92,30 @@ const eventPayloadSchema = z.object({
   location: z.string().optional(),
 })
 
-const eventStatusSchema = z.object({
-  status: z.enum(['pending', 'confirmed', 'declined']),
-})
+const eventUpdateSchema = z
+  .object({
+    title: z.string().trim().min(1, 'El título no puede estar vacío').optional(),
+    start: z.string().datetime().optional(),
+    end: z.string().datetime().optional(),
+    description: z.union([z.string(), z.literal(null)]).optional(),
+    location: z.union([z.string(), z.literal(null)]).optional(),
+    status: z.enum(['pending', 'confirmed', 'declined']).optional(),
+    cleaningStatus: z.enum(['pending', 'done']).optional(),
+  })
+  .refine(
+    (payload) =>
+      payload.status !== undefined ||
+      payload.cleaningStatus !== undefined ||
+      payload.title !== undefined ||
+      payload.start !== undefined ||
+      payload.end !== undefined ||
+      payload.description !== undefined ||
+      payload.location !== undefined,
+    { message: 'Debes enviar al menos un campo para actualizar' },
+  )
+  .refine((payload) => (payload.start === undefined && payload.end === undefined) || (payload.start !== undefined && payload.end !== undefined), {
+    message: 'Si actualizas fechas debes enviar inicio y fin',
+  })
 
 const syncPayloadSchema = z.object({
   icalUrl: z.string().url('icalUrl debe ser una URL válida').optional(),
@@ -224,14 +245,14 @@ propertyRouter.post(
 propertyRouter.patch(
   '/:propertyId/events/:eventId',
   asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const parseResult = eventStatusSchema.safeParse(req.body)
+    const parseResult = eventUpdateSchema.safeParse(req.body)
     if (!parseResult.success) {
       res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
       return
     }
 
     const userId = getUserId(req)
-    const event = await eventService.updateEventStatus(userId, req.params.propertyId, req.params.eventId, parseResult.data.status)
+    const event = await eventService.updateEvent(userId, req.params.propertyId, req.params.eventId, parseResult.data)
     res.json({ event })
   }),
 )
