@@ -204,6 +204,19 @@ a.danger {
   gap: 1.5rem;
 }
 
+.dashboard-layout {
+  width: min(1920px, 100%);
+  margin: 0 auto;
+}
+
+.dashboard-layout .card,
+.dashboard-layout .calendar-card {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.9) 0%, rgba(247, 252, 255, 0.72) 100%);
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+}
+
 .topbar-left {
   display: flex;
   align-items: center;
@@ -429,7 +442,7 @@ a.danger {
 .property-workspace {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .info-banner {
@@ -502,6 +515,36 @@ a.danger {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.modal-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.modal-header-close {
+  padding: 0.55rem 0.9rem;
+}
+
+.modal--property-settings {
+  width: min(1240px, calc(100vw - 2rem));
+  height: min(94vh, 980px);
+  max-width: none;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 252, 255, 0.9) 100%);
+  padding: 1.25rem clamp(1rem, 2vw, 1.45rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.modal-form--property-settings {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.45rem;
 }
 
 .modal--info {
@@ -617,6 +660,15 @@ a.danger {
 
 .month-events-list__item:hover {
   background: rgba(224, 242, 254, 0.8);
+}
+
+.dashboard-layout .month-events-list__item {
+  border-color: rgba(14, 116, 110, 0.14);
+  background: linear-gradient(150deg, rgba(239, 252, 255, 0.84) 0%, rgba(255, 255, 255, 0.65) 100%);
+}
+
+.dashboard-layout .month-events-list__item:hover {
+  background: linear-gradient(150deg, rgba(224, 247, 255, 0.95) 0%, rgba(255, 255, 255, 0.84) 100%);
 }
 
 .month-events-list__range {
@@ -988,20 +1040,33 @@ a.danger {
   margin-top: 0;
 }
 
+.promo-links-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .instagram-preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
-.instagram-preview-grid .instagram-media {
+.instagram-preview-card {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(15, 118, 110, 0.15);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.95) 0%, rgba(237, 252, 255, 0.88) 100%);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.instagram-preview-card .instagram-media {
   margin: 0 !important;
   min-width: 0 !important;
-  width: 100% !important;
-  border-radius: 0.9rem !important;
-  border: 1px solid rgba(15, 23, 42, 0.09) !important;
-  background: #ffffff !important;
-  overflow: hidden;
+  max-width: 100% !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
 }
 
 .promo-footer {
@@ -1086,6 +1151,8 @@ a.danger {
   flex: 1;
   flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .calendar-navigator {
@@ -1101,11 +1168,13 @@ a.danger {
   grid-template-columns: 1fr;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  min-width: 0;
   grid-auto-rows: minmax(560px, auto);
 }
 
 @media (min-width: 768px) {
-  .multi-month-calendar__grid {
+  .multi-month-calendar__grid:not(.multi-month-calendar__grid--single) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1129,6 +1198,8 @@ a.danger {
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(6px);
+  width: 100%;
+  min-width: 0;
 }
 
 .multi-month-calendar__cell-header {
@@ -1140,6 +1211,8 @@ a.danger {
 .multi-month-calendar .rbc-calendar {
   flex: 1;
   height: 100%;
+  width: 100%;
+  min-width: 0;
   background: transparent;
   border-radius: 0.85rem;
   overflow: hidden;
@@ -1147,6 +1220,8 @@ a.danger {
 
 .multi-month-calendar .rbc-month-view {
   border: none;
+  width: 100%;
+  min-width: 0;
 }
 
 .multi-month-calendar .rbc-header {
@@ -1348,5 +1423,29 @@ a.danger {
   .public-calendar-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (min-width: 1180px) {
+  .property-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 2.25fr) minmax(340px, 1fr);
+    align-items: start;
+    gap: 1.2rem;
+  }
+
+  .property-workspace > .info-banner,
+  .property-workspace > .alert {
+    grid-column: 1 / -1;
+  }
+
+  .property-workspace > .calendar-card {
+    grid-column: 1 / 2;
+  }
+
+  .property-workspace > .month-events-card {
+    grid-column: 2 / 3;
+    position: sticky;
+    top: 1rem;
   }
 }

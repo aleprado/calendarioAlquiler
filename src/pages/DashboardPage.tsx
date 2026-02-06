@@ -588,9 +588,14 @@ export const DashboardPage = () => {
 
       {isEditModalOpen && selectedProperty && (
         <div className="modal-backdrop" role="presentation">
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-property-title">
-            <h2 id="edit-property-title">Editar propiedad</h2>
-            <form className="modal-form" onSubmit={handleSaveEdit}>
+          <div className="modal modal--property-settings" role="dialog" aria-modal="true" aria-labelledby="edit-property-title">
+            <div className="modal-header-row">
+              <h2 id="edit-property-title">Editar propiedad</h2>
+              <button type="button" className="secondary modal-header-close" onClick={() => setIsEditModalOpen(false)} disabled={isSavingEdit}>
+                Cerrar
+              </button>
+            </div>
+            <form className="modal-form modal-form--property-settings" onSubmit={handleSaveEdit}>
               <label htmlFor="edit-name">Nombre</label>
               <input
                 id="edit-name"
@@ -740,14 +745,17 @@ export const DashboardPage = () => {
                 placeholder={'https://.../foto-1.jpg\nhttps://.../foto-2.jpg'}
                 rows={5}
               />
-              <label htmlFor="edit-instagram-post-urls">Posts de Instagram destacados (una URL por línea)</label>
+              <label htmlFor="edit-instagram-post-urls">Posts/Reels de Instagram (una URL por línea)</label>
               <textarea
                 id="edit-instagram-post-urls"
                 value={editForm.instagramPostUrls}
                 onChange={(event) => setEditForm((prev) => ({ ...prev, instagramPostUrls: event.target.value }))}
-                placeholder="https://www.instagram.com/p/..."
+                placeholder={'https://www.instagram.com/p/...\nhttps://www.instagram.com/reel/...'}
                 rows={4}
               />
+              <p className="field-hint">
+                Usa publicaciones públicas de Instagram (`/p/` o `/reel/`). Historias y feed automático no están soportados en este modo.
+              </p>
               <div className="edit-actions">
                 <button type="submit" className="primary" disabled={isSavingEdit}>
                   {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
@@ -774,11 +782,6 @@ export const DashboardPage = () => {
                 </a>
               </p>
             </form>
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={() => setIsEditModalOpen(false)} disabled={isSavingEdit}>
-                Cerrar
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -90,7 +90,7 @@ export const MultiMonthCalendar = ({
           </button>
         </div>
       )}
-      <div className="multi-month-calendar__grid">
+      <div className={`multi-month-calendar__grid${months.length === 1 ? ' multi-month-calendar__grid--single' : ''}`}>
         {months.map(({ id, date }) => (
           <div key={id} className="multi-month-calendar__cell">
             <div className="multi-month-calendar__cell-header">{format(date, 'MMMM yyyy', { locale: es })}</div>
