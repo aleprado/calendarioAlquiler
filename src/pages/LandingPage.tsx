@@ -27,9 +27,9 @@ export const LandingPage = () => {
     <div className="landing-layout">
       <main className="landing-main">
         <header className="landing-hero landing-hero--centered">
-          <img src="/logo-vacacional.svg" alt="Brisa Alquileres" className="landing-logo" />
+          <img src="/logo-vacacional.svg" alt="simplealquiler.net" className="landing-logo" />
           <h1>
-            Brisa Alquileres<span>.com</span>
+            simplealquiler<span>.net</span>
           </h1>
           <p>Gestion profesional de alquileres vacacionales con calendario, web de promocion y reservas directas.</p>
           <button type="button" className="primary" onClick={handleSignIn} disabled={loading}>

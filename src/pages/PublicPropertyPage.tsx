@@ -273,6 +273,15 @@ export const PublicPropertyPage = () => {
         </>
       ) : null}
 
+      <footer className="public-mini-footer">
+        <p className="public-powered-by">
+          Creado con{' '}
+          <a href="https://simplealquiler.net" target="_blank" rel="noopener noreferrer">
+            simplealquiler.net
+          </a>
+        </p>
+      </footer>
+
       <RequestFormModal
         isOpen={isModalOpen && Boolean(pendingRange)}
         range={pendingRange}

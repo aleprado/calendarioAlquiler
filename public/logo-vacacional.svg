@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" role="img" aria-labelledby="title desc">
-  <title id="title">Brisa Alquileres</title>
-  <desc id="desc">Logo vacacional con casa, sol y olas.</desc>
+  <title id="title">simplealquiler.net</title>
+  <desc id="desc">Logo vacacional con casa, sol y olas para simplealquiler.net.</desc>
   <defs>
     <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#ffd166" />
@@ -26,8 +26,8 @@
   </g>
 
   <g transform="translate(180 42)">
-    <text x="0" y="40" font-size="44" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="700" fill="#0f172a">Brisa</text>
-    <text x="0" y="86" font-size="40" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0f766e">Alquileres</text>
-    <text x="2" y="116" font-size="20" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0369a1">vacacional y profesional</text>
+    <text x="0" y="40" font-size="42" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="700" fill="#0f172a">simple</text>
+    <text x="0" y="86" font-size="38" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="600" fill="#0f766e">alquiler.net</text>
+    <text x="2" y="116" font-size="20" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0369a1">gestion vacacional profesional</text>
   </g>
 </svg>

@@ -29,16 +29,6 @@ const isLikelyUrl = (value: string) => {
   }
 }
 
-const isGoogleMapsUrl = (value: string) => {
-  try {
-    const parsed = new URL(value)
-    const host = normalizeHost(parsed.hostname)
-    return host === 'maps.app.goo.gl' || host === 'google.com' || host.endsWith('.google.com')
-  } catch {
-    return false
-  }
-}
-
 const isInstagramUrl = (value: string) => {
   try {
     const parsed = new URL(value)
@@ -77,15 +67,6 @@ const buildEmbedMapUrl = (data: PublicAvailabilityDTO) => {
 
   if (data.locationLabel && !isLikelyUrl(data.locationLabel)) return buildSearchMapUrl(data.locationLabel)
 
-  return null
-}
-
-const buildReviewsUrl = (data: PublicAvailabilityDTO) => {
-  if (data.googleMapsReviewsUrl) return data.googleMapsReviewsUrl
-  if (data.googleMapsPlaceId) {
-    return `https://search.google.com/local/reviews?placeid=${encodeURIComponent(data.googleMapsPlaceId)}`
-  }
-  if (data.googleMapsPinUrl && isGoogleMapsUrl(data.googleMapsPinUrl)) return data.googleMapsPinUrl
   return null
 }
 
@@ -138,7 +119,6 @@ export const PublicPromoPage = () => {
   }, [data?.galleryImageUrls])
 
   const mapEmbedUrl = useMemo(() => (data ? buildEmbedMapUrl(data) : null), [data])
-  const reviewsUrl = useMemo(() => (data ? buildReviewsUrl(data) : null), [data])
   const images = useMemo(
     () => (data?.galleryImageUrls ?? []).filter((url) => !hiddenImageUrls.includes(url)),
     [data?.galleryImageUrls, hiddenImageUrls],
@@ -364,21 +344,12 @@ export const PublicPromoPage = () => {
               </div>
             )}
 
-            {(data.googleMapsPinUrl || (data.showGoogleReviews && reviewsUrl)) && (
+            {data.googleMapsPinUrl && (
               <div className="promo-location-links">
-                {data.googleMapsPinUrl && (
-                  <a className="promo-location-link" href={data.googleMapsPinUrl} target="_blank" rel="noopener noreferrer">
-                    Abrir ubicación en Google Maps
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                )}
-
-                {data.showGoogleReviews && reviewsUrl && (
-                  <a className="promo-location-link promo-location-link--soft" href={reviewsUrl} target="_blank" rel="noopener noreferrer">
-                    Ver reseñas en Google Maps
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                )}
+                <a className="promo-location-link" href={data.googleMapsPinUrl} target="_blank" rel="noopener noreferrer">
+                  Abrir ubicación en Google Maps
+                  <span aria-hidden="true">↗</span>
+                </a>
               </div>
             )}
           </section>
@@ -425,6 +396,12 @@ export const PublicPromoPage = () => {
             <Link className="primary" to={`/public/${data.publicSlug}/calendario`}>
               Revisar disponibilidad
             </Link>
+            <p className="public-powered-by">
+              Creado con{' '}
+              <a href="https://simplealquiler.net" target="_blank" rel="noopener noreferrer">
+                simplealquiler.net
+              </a>
+            </p>
           </footer>
         </>
       ) : null}
