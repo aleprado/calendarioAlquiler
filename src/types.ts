@@ -106,6 +106,19 @@ export interface JoinPropertyPayload {
   code: string
 }
 
+export interface ResolvedGoogleMapsLinkDTO {
+  resolvedUrl: string
+  googleMapsPlaceId: string | null
+  googleMapsLat: number | null
+  googleMapsLng: number | null
+  locationLabel: string | null
+}
+
+export interface ImportedGooglePhotosAlbumDTO {
+  sourceUrl: string
+  images: string[]
+}
+
 export interface PublicEventDTO {
   start: string
   end: string

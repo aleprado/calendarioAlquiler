@@ -13,18 +13,24 @@ declare global {
   }
 }
 
+const MAPS_EMBED_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY as string | undefined)?.trim() ?? ''
+
+const buildSearchMapUrl = (query: string) =>
+  `https://www.google.com/maps?hl=es&q=${encodeURIComponent(query)}&z=16&output=embed`
+
 const buildEmbedMapUrl = (data: PublicAvailabilityDTO) => {
   if (data.googleMapsPlaceId) {
-    return `https://www.google.com/maps?q=place_id:${encodeURIComponent(data.googleMapsPlaceId)}&hl=es&z=16&output=embed`
+    if (MAPS_EMBED_API_KEY) {
+      return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(MAPS_EMBED_API_KEY)}&q=place_id:${encodeURIComponent(data.googleMapsPlaceId)}`
+    }
+    return buildSearchMapUrl(`place_id:${data.googleMapsPlaceId}`)
   }
 
   if (typeof data.googleMapsLat === 'number' && typeof data.googleMapsLng === 'number') {
-    return `https://www.google.com/maps?q=${data.googleMapsLat},${data.googleMapsLng}&hl=es&z=16&output=embed`
+    return buildSearchMapUrl(`${data.googleMapsLat},${data.googleMapsLng}`)
   }
 
-  if (data.googleMapsPinUrl) {
-    return `https://www.google.com/maps?q=${encodeURIComponent(data.googleMapsPinUrl)}&hl=es&z=16&output=embed`
-  }
+  if (data.locationLabel) return buildSearchMapUrl(data.locationLabel)
 
   return null
 }
@@ -37,12 +43,24 @@ const buildReviewsUrl = (data: PublicAvailabilityDTO) => {
   return data.googleMapsPinUrl
 }
 
+const getInstagramUsername = (instagramUrl: string | null) => {
+  if (!instagramUrl) return null
+  try {
+    const url = new URL(instagramUrl)
+    const firstSegment = url.pathname.split('/').filter(Boolean)[0]
+    return firstSegment || null
+  } catch {
+    return null
+  }
+}
+
 export const PublicPromoPage = () => {
   const { publicSlug = '' } = useParams()
   const [data, setData] = useState<PublicAvailabilityDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [hiddenImageUrls, setHiddenImageUrls] = useState<string[]>([])
 
   useEffect(() => {
     let mounted = true
@@ -70,6 +88,7 @@ export const PublicPromoPage = () => {
 
   useEffect(() => {
     setActiveImageIndex(0)
+    setHiddenImageUrls([])
   }, [data?.galleryImageUrls])
 
   useEffect(() => {
@@ -101,8 +120,29 @@ export const PublicPromoPage = () => {
 
   const mapEmbedUrl = useMemo(() => (data ? buildEmbedMapUrl(data) : null), [data])
   const reviewsUrl = useMemo(() => (data ? buildReviewsUrl(data) : null), [data])
-  const images = data?.galleryImageUrls ?? []
+  const images = useMemo(
+    () => (data?.galleryImageUrls ?? []).filter((url) => !hiddenImageUrls.includes(url)),
+    [data?.galleryImageUrls, hiddenImageUrls],
+  )
   const activeImage = images[activeImageIndex] ?? null
+  const instagramUsername = getInstagramUsername(data?.instagramUrl ?? null)
+
+  useEffect(() => {
+    if (images.length === 0) {
+      if (activeImageIndex !== 0) {
+        setActiveImageIndex(0)
+      }
+      return
+    }
+
+    if (activeImageIndex >= images.length) {
+      setActiveImageIndex(0)
+    }
+  }, [activeImageIndex, images.length])
+
+  const markImageAsHidden = (url: string) => {
+    setHiddenImageUrls((previous) => (previous.includes(url) ? previous : [...previous, url]))
+  }
 
   return (
     <div className="public-promo-layout">
@@ -114,29 +154,57 @@ export const PublicPromoPage = () => {
         </div>
       ) : data ? (
         <>
-          <header className="promo-hero">
-            <div className="promo-hero__content">
-              <p className="promo-label">Estadias vacacionales</p>
+          <header className="promo-hero promo-hero--brochure">
+            <div className="promo-hero__media promo-hero__media--brochure">
+              {activeImage ? (
+                <img
+                  src={activeImage}
+                  alt={`Imagen principal de ${data.propertyName}`}
+                  onError={() => {
+                    markImageAsHidden(activeImage)
+                  }}
+                />
+              ) : (
+                <div className="promo-hero__placeholder">
+                  Carga fotos en gestión para que esta portada se vea como un folleto visual.
+                </div>
+              )}
+              <div className="promo-hero__media-overlay" />
+            </div>
+
+            <div className="promo-hero__content promo-hero__content--brochure">
+              <p className="promo-label">Estadia vacacional</p>
               <h1>{data.propertyName}</h1>
-              <p>{data.description ?? 'Descansa en una propiedad pensada para viajes con ritmo tranquilo y buena ubicación.'}</p>
+              <p className="promo-hero__description">
+                {data.description ?? 'Alojamiento pensado para descansar, disfrutar la zona y reservar directo desde esta misma página.'}
+              </p>
+
               <div className="promo-hero__actions">
                 <Link className="primary" to={`/public/${data.publicSlug}/calendario`}>
-                  Ver calendario y reservar
+                  Ver disponibilidad
                 </Link>
                 {data.googlePhotosUrl && (
                   <a className="secondary" href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
-                    Ver album en Google Fotos
+                    Abrir album
                   </a>
                 )}
               </div>
-            </div>
-            {activeImage ? (
-              <div className="promo-hero__media">
-                <img src={activeImage} alt={`Imagen de ${data.propertyName}`} />
+
+              <div className="promo-meta-grid">
+                <div className="promo-meta-card">
+                  <h3>Ubicación</h3>
+                  <p>{data.locationLabel ?? 'Configura la ubicación desde gestión para mostrar el pin exacto.'}</p>
+                </div>
+                <div className="promo-meta-card">
+                  <h3>Google Fotos</h3>
+                  <p>{data.googlePhotosUrl ? 'Album conectado para compartir fotos.' : 'No hay álbum conectado aún.'}</p>
+                </div>
+                <div className="promo-meta-card">
+                  <h3>Instagram</h3>
+                  <p>{instagramUsername ? `Perfil @${instagramUsername}` : 'No hay perfil configurado aún.'}</p>
+                </div>
               </div>
-            ) : (
-              <div className="promo-hero__placeholder">Agrega imagenes para mostrar tu propiedad</div>
-            )}
+            </div>
           </header>
 
           <section className="promo-section">
@@ -151,7 +219,15 @@ export const PublicPromoPage = () => {
             {images.length > 0 ? (
               <div className="promo-carousel">
                 <div className="promo-carousel__main">
-                  <img src={activeImage ?? ''} alt={`Foto ${activeImageIndex + 1} de ${data.propertyName}`} />
+                  <img
+                    src={activeImage ?? ''}
+                    alt={`Foto ${activeImageIndex + 1} de ${data.propertyName}`}
+                    onError={() => {
+                      if (activeImage) {
+                        markImageAsHidden(activeImage)
+                      }
+                    }}
+                  />
                   {images.length > 1 && (
                     <div className="promo-carousel__controls">
                       <button
@@ -180,7 +256,13 @@ export const PublicPromoPage = () => {
                         className={`promo-carousel__thumb${index === activeImageIndex ? ' promo-carousel__thumb--active' : ''}`}
                         onClick={() => setActiveImageIndex(index)}
                       >
-                        <img src={url} alt={`Miniatura ${index + 1}`} />
+                        <img
+                          src={url}
+                          alt={`Miniatura ${index + 1}`}
+                          onError={() => {
+                            markImageAsHidden(url)
+                          }}
+                        />
                       </button>
                     ))}
                   </div>
@@ -188,11 +270,16 @@ export const PublicPromoPage = () => {
               </div>
             ) : (
               <div className="promo-empty">
-                <p>Todavia no hay imagenes cargadas para esta propiedad.</p>
+                <p>No hay imágenes de galería cargadas.</p>
                 {data.googlePhotosUrl && (
-                  <a href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
-                    Ver album externo
-                  </a>
+                  <>
+                    <p>
+                      En gestión puedes usar “Importar fotos del álbum” para copiar imágenes desde Google Fotos a esta galería.
+                    </p>
+                    <a href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
+                      Abrir álbum de Google Fotos
+                    </a>
+                  </>
                 )}
               </div>
             )}
@@ -213,7 +300,16 @@ export const PublicPromoPage = () => {
                 />
               </div>
             ) : (
-              <div className="promo-empty">No hay pin de Google Maps configurado.</div>
+              <div className="promo-empty">
+                <p>No hay datos de ubicación suficientes para mostrar el mapa.</p>
+                <p>Pega el link del pin en gestión y usa “Detectar pin automáticamente”.</p>
+              </div>
+            )}
+
+            {data.googleMapsPinUrl && (
+              <a className="secondary" href={data.googleMapsPinUrl} target="_blank" rel="noopener noreferrer">
+                Abrir ubicación en Google Maps
+              </a>
             )}
 
             {data.showGoogleReviews && reviewsUrl && (
@@ -249,7 +345,10 @@ export const PublicPromoPage = () => {
               </div>
             ) : data.instagramUrl ? (
               <div className="promo-empty">
-                <p>Todavia no hay publicaciones destacadas cargadas.</p>
+                <p>
+                  Para mostrar publicaciones aquí, agrega links de posts en gestión. Las historias y el “feed reciente” requieren
+                  integración avanzada con la API oficial de Instagram.
+                </p>
                 <a href={data.instagramUrl} target="_blank" rel="noopener noreferrer">
                   Abrir perfil de Instagram
                 </a>

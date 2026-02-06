@@ -1,32 +1,65 @@
-# Onboarding Rápido
+# Onboarding Rapido
 
-- **Stack**: React 19 + Vite + TypeScript, `react-big-calendar` con `date-fns` (locale es), Firebase en `src/api`.
-- **Instalar**: `npm install`
-- **Correr**: `npm run dev`
-- **Lint**: `npm run lint`
-- **Build**: `npm run build`
-- **Páginas**: `src/pages/DashboardPage.tsx` (panel privado), `src/pages/PublicPropertyPage.tsx` (vista pública), `src/pages/LandingPage.tsx` (marketing).
-- **Componentes clave**: `src/components/PropertyWorkspace.tsx` (lógica de calendario y eventos), `src/components/MultiMonthCalendar.tsx` (layout de meses), modales en `src/components/*Modal.tsx`.
-- **Estilos**: CSS global en `src/App.css` (incluye la skin de `react-big-calendar`).
-- **Localización de fechas**: `src/lib/dateLocalizer.ts` agrega locale es y primer día de semana.
-- **Tipos**: `src/types.ts` centraliza tipos de eventos/propiedades/payloads de API.
+## Stack
+- Frontend: React 19 + Vite + TypeScript.
+- Backend: Cloud Function HTTP (Express + TypeScript) en `functions/`.
+- Auth: Firebase Auth (Google login).
+- Datos: Firestore.
 
-## Reglas rápidas de calendario
-- Eventos con origen `airbnb` y `public` se normalizan a medianoche local en `PropertyWorkspace.tsx` y `PublicPropertyPage.tsx`.
-- El multi-mes muestra 12 meses desde el actual y **no recorta eventos**: solo filtra los que cruzan el mes para evitar “cortes” visuales.
-- Estilos de días: `calendar-day--blocked` y `calendar-day--pending` se aplican vía `dayPropGetter`.
+## Como correr en local
+1. Instala dependencias:
+```bash
+npm install
+npm --prefix functions install
+```
 
-## Flujo de eventos (privado)
-1) Al montar `PropertyWorkspace` se sincroniza Airbnb (`syncAirbnb`) y luego `fetchEvents`.
-2) Los eventos se transforman con `toCalendarEvent` (normalización y flags `duplicateWithAirbnb`).
-3) Creación manual: selección en calendario → `EventFormModal` → `createEvent`.
-4) Solicitudes públicas pendientes (`source === 'public'`) se aceptan/declinan desde `EventDetailsModal` (`updateEventStatus`).
-5) Eliminación disponible excepto para eventos `airbnb`.
+2. Crea `.env.local` en la raiz:
+```bash
+VITE_API_BASE_URL=http://localhost:8080
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_APP_ID=...
+# opcionales:
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_GOOGLE_MAPS_EMBED_API_KEY=...
+```
 
-## Flujo de disponibilidad pública
-- `PublicPropertyPage` carga `fetchPublicAvailability(publicSlug)` y pinta bloqueos/pending en el calendario.
-- Selecciones que intersectan eventos existentes muestran modal de “no disponible”; si está libre se abre `RequestFormModal` y se envía a `submitPublicRequest`.
+3. Configura credenciales de Firebase Admin para la API:
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/service-account.json
+```
 
-## Layout/UX
-- `MultiMonthCalendar` usa un grid responsivo (1 col en mobile, 2 en desktop) en `src/App.css`.
-- Eventos que continúan entre meses siguen mostrando las “burbujas” `continuesPrior/continuesAfter` de `react-big-calendar` para comunicar continuidad.
+4. Levanta backend y frontend en terminales separadas:
+```bash
+npm --prefix functions run build
+npm --prefix functions run dev
+```
+
+```bash
+npm run dev
+```
+
+## Rutas principales
+- `/` landing.
+- `/dashboard` panel privado.
+- `/public/:publicSlug` pagina promocional.
+- `/public/:publicSlug/calendario` calendario publico para solicitud de reserva.
+
+## Flujos clave
+- En gestion puedes:
+  - Detectar pin de Google Maps desde links largos o cortos (`maps.app.goo.gl`).
+  - Activar/desactivar visibilidad de resenas de Google Maps.
+  - Importar imagenes desde un album de Google Fotos sin subir archivos a storage.
+  - Cargar URLs de posts de Instagram para mostrar preview embebido.
+
+- En la web publica:
+  - La promo muestra hero, galeria, ubicacion y bloque de Instagram.
+  - El calendario de disponibilidad se maneja en la ruta separada `/calendario`.
+
+## Comandos utiles
+- Frontend lint: `npm run lint`
+- Frontend build: `npm run build`
+- Backend lint: `npm --prefix functions run lint`
+- Backend build: `npm --prefix functions run build`

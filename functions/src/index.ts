@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { authService, type AuthenticatedRequest } from './services/authService'
 import { propertyService } from './services/propertyService'
 import { eventService } from './services/eventService'
+import { mapLinkService } from './services/mapLinkService'
+import { googlePhotosService } from './services/googlePhotosService'
 import { ServiceError, isServiceError } from './utils/errors'
 
 const app = express()
@@ -99,6 +101,15 @@ const syncPayloadSchema = z.object({
   includeTentative: z.boolean().optional(),
 })
 
+const mapResolveSchema = z.object({
+  url: z.string().url('La URL debe ser válida'),
+})
+
+const googlePhotosImportSchema = z.object({
+  url: z.string().url('La URL del álbum debe ser válida'),
+  limit: z.number().int().min(1).max(24).optional(),
+})
+
 const propertyRouter = express.Router()
 propertyRouter.use((req, res, next) => {
   void authService.middleware(req as AuthenticatedRequest, res, next)
@@ -140,6 +151,34 @@ propertyRouter.post(
     const userId = getUserId(req)
     const property = await propertyService.joinByShareCode(userId, parseResult.data.code)
     res.json({ property })
+  }),
+)
+
+propertyRouter.post(
+  '/resolve-map-link',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = mapResolveSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
+
+    const resolved = await mapLinkService.resolveGoogleMapsLink(parseResult.data.url)
+    res.json({ resolved })
+  }),
+)
+
+propertyRouter.post(
+  '/import-google-photos',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const parseResult = googlePhotosImportSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ message: 'Datos inválidos', issues: parseResult.error.issues })
+      return
+    }
+
+    const imported = await googlePhotosService.importAlbumImages(parseResult.data.url, parseResult.data.limit)
+    res.json({ imported })
   }),
 )
 

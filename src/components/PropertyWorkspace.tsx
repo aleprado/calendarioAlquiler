@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FC } from 'react'
 import type { EventProps, SlotInfo } from 'react-big-calendar'
+import { addMonths, format, startOfMonth } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { EventFormModal } from './EventFormModal'
 import { EventDetailsModal } from './EventDetailsModal'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
@@ -17,6 +19,37 @@ const toLocalMidnightFromKey = (key: string) => {
 }
 
 const toLocalMidnight = (date: Date) => new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+const normalizeSelectionRange = (start: Date, end: Date) => {
+  const normalizedStart = startOfDayLocal(start)
+  const normalizedEnd = startOfDayLocal(end)
+  const endExclusive = normalizedEnd <= normalizedStart ? addDays(normalizedStart, 1) : normalizedEnd
+  return {
+    start: normalizedStart,
+    end: endExclusive,
+    displayEnd: addDays(endExclusive, -1),
+  }
+}
+
+const getMonthLabel = (date: Date) => format(date, 'MMMM yyyy', { locale: es })
+
+const eventStatusLabel = (event: CalendarEvent) => {
+  if (event.status === 'confirmed') return 'Confirmado'
+  if (event.status === 'pending') return 'Pendiente'
+  if (event.status === 'tentative') return 'Tentativo'
+  return 'Declinado'
+}
+
+const eventSourceLabel = (event: CalendarEvent) => {
+  if (event.source === 'airbnb') return 'Airbnb'
+  if (event.source === 'public') return 'Solicitud web'
+  return 'Manual'
+}
+
+const getEventListRangeLabel = (event: CalendarEvent) => {
+  const { s, e } = normRange(event)
+  const displayEnd = addDays(e, -1)
+  return `${format(s, 'd MMM', { locale: es })} - ${format(displayEnd, 'd MMM', { locale: es })}`
+}
 
 const normRange = (ev: CalendarEvent) => {
   const s = startOfDayLocal(ev.start)
@@ -37,24 +70,18 @@ const isAirbnbReserved = (e: CalendarEvent) => isAirbnb(e) && e.status === 'conf
 type ViewEvent = CalendarEvent & { duplicateWithAirbnb?: boolean }
 
 const computeVisibleEvents = (all: CalendarEvent[]): ViewEvent[] => {
-  const manualLike = all.filter((event) => event.status !== 'declined' && behavesAsManual(event))
-  const airbnbs = all.filter(isAirbnb)
-
-  const airbnbHidden = new Set<string>()
+  const viewEvents = all.map((event) => ({ ...event, duplicateWithAirbnb: false }))
+  const manualLike = viewEvents.filter((event) => event.status !== 'declined' && behavesAsManual(event))
+  const airbnbs = viewEvents.filter(isAirbnb)
 
   manualLike.forEach((manual) => {
     const overlapsAirbnb = airbnbs.some((airbnb) => isAirbnbReserved(airbnb) && rangesOverlap(manual, airbnb))
     if (overlapsAirbnb) {
-      ;(manual as ViewEvent).duplicateWithAirbnb = true
-      airbnbs.forEach((airbnb) => {
-        if (isAirbnbReserved(airbnb) && rangesOverlap(manual, airbnb)) airbnbHidden.add(airbnb.id)
-      })
+      manual.duplicateWithAirbnb = true
     }
   })
 
-  return all
-    .filter((event) => !isAirbnb(event) || !airbnbHidden.has(event.id))
-    .map((event) => event as ViewEvent)
+  return viewEvents
 }
 
 const normalizeEventDates = (
@@ -152,9 +179,9 @@ const MonthEventRenderer: FC<MonthEventProps> = ({ event, title, continuesPrior,
   }
 
   const badge = event.duplicateWithAirbnb ? (
-    <span className="status-badge">Bloqueado en Airbnb</span>
+    <span className="status-badge">Airbnb OK</span>
   ) : (
-    <span className="status-badge status--warning">No bloqueado en Airbnb</span>
+    <span className="status-badge status--warning">Sin Airbnb</span>
   )
 
   return (
@@ -216,8 +243,19 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [isProcessingEvent, setIsProcessingEvent] = useState(false)
   const [eventError, setEventError] = useState<string | null>(null)
+  const [activeMonth, setActiveMonth] = useState(() => startOfMonth(new Date()))
 
   const visibleEvents = useMemo(() => computeVisibleEvents(events), [events])
+  const monthEvents = useMemo(() => {
+    const monthStart = startOfMonth(activeMonth)
+    const monthEnd = addMonths(monthStart, 1)
+    return visibleEvents
+      .filter((event) => {
+        const range = normRange(event)
+        return range.s < monthEnd && range.e > monthStart
+      })
+      .sort((left, right) => left.start.getTime() - right.start.getTime())
+  }, [activeMonth, visibleEvents])
 
   const loadEvents = useCallback(
     async (options?: { skipClearError?: boolean }) => {
@@ -261,9 +299,14 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   }, [loadEvents, property.id])
 
   const handleSelectSlot = useCallback((slot: SlotInfo) => {
-    const slots = Array.isArray(slot.slots) ? slot.slots : []
-    const rawDisplayEnd = slots.length > 0 ? slots[slots.length - 1] : slot.end
-    setPendingRange({ start: slot.start, end: slot.end, displayEnd: new Date(rawDisplayEnd) })
+    setPendingRange(normalizeSelectionRange(slot.start, slot.end))
+    setModalError(null)
+    setIsModalOpen(true)
+  }, [])
+
+  const handleOpenNewEventModal = useCallback(() => {
+    const today = startOfDayLocal(new Date())
+    setPendingRange(normalizeSelectionRange(today, addDays(today, 1)))
     setModalError(null)
     setIsModalOpen(true)
   }, [])
@@ -275,15 +318,14 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
   }, [])
 
   const handleCreateEvent = useCallback(
-    async (payload: { title: string; description?: string; location?: string }) => {
-      if (!pendingRange) return
+    async (payload: { title: string; description?: string; location?: string; start: Date; end: Date }) => {
       setIsSubmitting(true)
       setModalError(null)
       try {
         const createdEvent = await createEvent(property.id, {
           title: payload.title,
-          start: pendingRange.start.toISOString(),
-          end: pendingRange.end.toISOString(),
+          start: payload.start.toISOString(),
+          end: payload.end.toISOString(),
           description: payload.description,
           location: payload.location,
         })
@@ -298,7 +340,7 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
         setIsSubmitting(false)
       }
     },
-    [handleCloseModal, pendingRange, property.id],
+    [handleCloseModal, property.id],
   )
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
@@ -396,6 +438,12 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
       )}
 
       <div className="calendar-card">
+        <div className="calendar-card__toolbar">
+          <button type="button" className="primary" onClick={handleOpenNewEventModal}>
+            Nuevo evento
+          </button>
+          <p>Selecciona días o ajusta inicio/fin manualmente para crear eventos entre distintos meses.</p>
+        </div>
         {isLoading ? (
           <div className="loading">Cargando eventos...</div>
         ) : (
@@ -408,9 +456,35 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
             renderMonthEvent={MonthEventRenderer}
             monthsToShow={1}
             showNavigator
+            anchorMonth={activeMonth}
+            onAnchorMonthChange={setActiveMonth}
           />
         )}
       </div>
+
+      <section className="card month-events-card">
+        <div className="month-events-card__header">
+          <h3>Eventos de {getMonthLabel(activeMonth)}</h3>
+          <span>{monthEvents.length}</span>
+        </div>
+        {monthEvents.length === 0 ? (
+          <p className="subtitle">No hay eventos para este mes.</p>
+        ) : (
+          <ul className="month-events-list">
+            {monthEvents.map((event) => (
+              <li key={event.id}>
+                <button type="button" onClick={() => handleSelectEvent(event)} className="month-events-list__item">
+                  <span className="month-events-list__range">{getEventListRangeLabel(event)}</span>
+                  <strong className="month-events-list__title">{event.title || 'Reserva'}</strong>
+                  <span className="month-events-list__meta">
+                    {eventSourceLabel(event)} · {eventStatusLabel(event)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <EventFormModal
         isOpen={isModalOpen && Boolean(pendingRange)}

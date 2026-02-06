@@ -19,6 +19,8 @@ type MultiMonthCalendarProps = {
   dayPropGetter?: CalendarProps<CalendarEvent>['dayPropGetter']
   monthsToShow?: number
   showNavigator?: boolean
+  anchorMonth?: Date
+  onAnchorMonthChange?: (month: Date) => void
 }
 
 const DEFAULT_TOTAL_MONTHS = 12
@@ -49,30 +51,41 @@ export const MultiMonthCalendar = ({
   dayPropGetter,
   monthsToShow = DEFAULT_TOTAL_MONTHS,
   showNavigator = false,
+  anchorMonth,
+  onAnchorMonthChange,
 }: MultiMonthCalendarProps) => {
   const todayMonth = useMemo(() => startOfMonth(new Date()), [])
-  const [anchorMonth, setAnchorMonth] = useState(todayMonth)
+  const [internalAnchorMonth, setInternalAnchorMonth] = useState(todayMonth)
+  const resolvedAnchorMonth = useMemo(() => startOfMonth(anchorMonth ?? internalAnchorMonth), [anchorMonth, internalAnchorMonth])
+
+  const setAnchorMonth = (nextMonth: Date) => {
+    const normalizedMonth = startOfMonth(nextMonth)
+    if (!anchorMonth) {
+      setInternalAnchorMonth(normalizedMonth)
+    }
+    onAnchorMonthChange?.(normalizedMonth)
+  }
 
   const months = useMemo(
     () =>
       Array.from({ length: Math.max(1, monthsToShow) }, (_, index) => ({
         id: index,
-        date: addMonths(anchorMonth, index),
+        date: addMonths(resolvedAnchorMonth, index),
       })),
-    [anchorMonth, monthsToShow],
+    [monthsToShow, resolvedAnchorMonth],
   )
 
   return (
     <div className="multi-month-calendar">
       {showNavigator && (
         <div className="calendar-navigator">
-          <button type="button" className="secondary" onClick={() => setAnchorMonth((current) => addMonths(current, -1))}>
+          <button type="button" className="secondary" onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, -1))}>
             Mes anterior
           </button>
           <button type="button" className="secondary" onClick={() => setAnchorMonth(todayMonth)}>
             Hoy
           </button>
-          <button type="button" className="secondary" onClick={() => setAnchorMonth((current) => addMonths(current, 1))}>
+          <button type="button" className="secondary" onClick={() => setAnchorMonth(addMonths(resolvedAnchorMonth, 1))}>
             Mes siguiente
           </button>
         </div>

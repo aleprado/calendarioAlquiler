@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
-import { listProperties, createProperty, updateProperty, joinProperty } from '../api/properties'
+import {
+  listProperties,
+  createProperty,
+  updateProperty,
+  joinProperty,
+  resolveGoogleMapsLink as resolveGoogleMapsLinkApi,
+  importGooglePhotosAlbum as importGooglePhotosAlbumApi,
+} from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
 
@@ -94,6 +101,10 @@ export const DashboardPage = () => {
   const [editForm, setEditForm] = useState(INITIAL_FORM)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [isResolvingMapLink, setIsResolvingMapLink] = useState(false)
+  const [mapResolveFeedback, setMapResolveFeedback] = useState<string | null>(null)
+  const [isImportingGooglePhotos, setIsImportingGooglePhotos] = useState(false)
+  const [photosImportFeedback, setPhotosImportFeedback] = useState<string | null>(null)
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
@@ -149,6 +160,8 @@ export const DashboardPage = () => {
         instagramPostUrls: selectedProperty.instagramPostUrls.join('\n'),
       })
       setEditError(null)
+      setMapResolveFeedback(null)
+      setPhotosImportFeedback(null)
     }
   }, [selectedProperty])
 
@@ -289,6 +302,66 @@ export const DashboardPage = () => {
       setEditError(err instanceof Error ? err.message : 'No se pudo actualizar la propiedad.')
     } finally {
       setIsSavingEdit(false)
+    }
+  }
+
+  const handleResolveMapLink = async () => {
+    const mapLink = editForm.googleMapsPinUrl.trim()
+    if (!mapLink) {
+      setEditError('Primero pega el enlace del pin de Google Maps.')
+      return
+    }
+
+    setIsResolvingMapLink(true)
+    setMapResolveFeedback(null)
+    setEditError(null)
+    try {
+      const resolved = await resolveGoogleMapsLinkApi(mapLink)
+      setEditForm((prev) => ({
+        ...prev,
+        googleMapsPinUrl: resolved.resolvedUrl || prev.googleMapsPinUrl,
+        googleMapsPlaceId: resolved.googleMapsPlaceId ?? prev.googleMapsPlaceId,
+        googleMapsLat: resolved.googleMapsLat !== null ? String(resolved.googleMapsLat) : prev.googleMapsLat,
+        googleMapsLng: resolved.googleMapsLng !== null ? String(resolved.googleMapsLng) : prev.googleMapsLng,
+        locationLabel: resolved.locationLabel ?? prev.locationLabel,
+      }))
+      setMapResolveFeedback('Pin detectado. Revisa los datos y guarda cambios.')
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'No se pudo resolver el link de Google Maps.')
+    } finally {
+      setIsResolvingMapLink(false)
+    }
+  }
+
+  const handleImportGooglePhotos = async () => {
+    const albumUrl = editForm.googlePhotosUrl.trim()
+    if (!albumUrl) {
+      setEditError('Primero pega el link del álbum de Google Fotos.')
+      return
+    }
+
+    setIsImportingGooglePhotos(true)
+    setPhotosImportFeedback(null)
+    setEditError(null)
+    try {
+      const imported = await importGooglePhotosAlbumApi(albumUrl)
+      const currentImages = parseUrlList(editForm.galleryImageUrls)
+      const mergedImages = Array.from(new Set([...currentImages, ...imported.images]))
+      const added = mergedImages.length - currentImages.length
+
+      setEditForm((prev) => ({
+        ...prev,
+        galleryImageUrls: mergedImages.join('\n'),
+      }))
+      setPhotosImportFeedback(
+        added > 0
+          ? `Se importaron ${added} foto${added === 1 ? '' : 's'} del álbum.`
+          : 'No se detectaron fotos nuevas para agregar.',
+      )
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'No se pudieron importar imágenes desde Google Fotos.')
+    } finally {
+      setIsImportingGooglePhotos(false)
     }
   }
 
@@ -547,9 +620,26 @@ export const DashboardPage = () => {
                 id="edit-google-photos-link"
                 type="url"
                 value={editForm.googlePhotosUrl}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))}
+                onChange={(event) => {
+                  setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))
+                  setPhotosImportFeedback(null)
+                }}
                 placeholder="https://photos.app.goo.gl/tu_album"
               />
+              <div className="map-link-tools">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => void handleImportGooglePhotos()}
+                  disabled={isImportingGooglePhotos}
+                >
+                  {isImportingGooglePhotos ? 'Importando fotos...' : 'Importar fotos del álbum'}
+                </button>
+                <p className="field-hint">
+                  No subimos archivos a storage: se agregan URLs públicas del álbum para usarlas en la galería.
+                </p>
+                {photosImportFeedback && <p className="field-hint field-hint--ok">{photosImportFeedback}</p>}
+              </div>
               <label htmlFor="edit-description">Descripción para la página pública</label>
               <textarea
                 id="edit-description"
@@ -581,9 +671,20 @@ export const DashboardPage = () => {
                     googleMapsLat: parsed.lat ?? prev.googleMapsLat,
                     googleMapsLng: parsed.lng ?? prev.googleMapsLng,
                   }))
+                  setMapResolveFeedback(null)
                 }}
                 placeholder="https://maps.google.com/..."
               />
+              <div className="map-link-tools">
+                <button type="button" className="secondary" onClick={() => void handleResolveMapLink()} disabled={isResolvingMapLink}>
+                  {isResolvingMapLink ? 'Procesando link...' : 'Detectar pin automáticamente'}
+                </button>
+                <p className="field-hint">
+                  Acepta links cortos de Google Maps (`maps.app.goo.gl`) y completa coordenadas/placeId para evitar errores de mapa en
+                  la web pública.
+                </p>
+                {mapResolveFeedback && <p className="field-hint field-hint--ok">{mapResolveFeedback}</p>}
+              </div>
               <label htmlFor="edit-maps-place-id">Google Place ID (opcional)</label>
               <input
                 id="edit-maps-place-id"

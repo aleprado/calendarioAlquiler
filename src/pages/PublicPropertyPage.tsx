@@ -38,6 +38,18 @@ const ensureEndAfterStart = (start: Date, end: Date) => {
   return end
 }
 
+const startOfDayLocal = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
+const normalizeSelectionRange = (start: Date, end: Date) => {
+  const normalizedStart = startOfDayLocal(start)
+  const normalizedEnd = startOfDayLocal(end)
+  const endExclusive = ensureEndAfterStart(normalizedStart, normalizedEnd)
+  return {
+    start: normalizedStart,
+    end: endExclusive,
+    displayEnd: new Date(endExclusive.getTime() - MS_IN_DAY),
+  }
+}
+
 const toCalendarEvents = (data: PublicAvailabilityDTO): CalendarEvent[] =>
   data.events.map((item, index) => {
     const rawStart = new Date(item.start)
@@ -148,13 +160,9 @@ export const PublicPropertyPage = () => {
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {
       if (!data) return
-      const slots = Array.isArray(slot.slots) ? slot.slots : []
-      const displayEndRaw = slots.length > 0 ? slots[slots.length - 1] : slot.end
+      const range = normalizeSelectionRange(slot.start, slot.end)
 
-      const start = slot.start
-      const end = slot.end
-
-      const overlapsBlocked = events.some((event) => rangesOverlap(event, start, end) && event.status !== 'declined')
+      const overlapsBlocked = events.some((event) => rangesOverlap(event, range.start, range.end) && event.status !== 'declined')
       if (overlapsBlocked) {
         setFeedback(null)
         setCalendarHint('Las fechas seleccionadas ya estan ocupadas o pendientes de confirmacion.')
@@ -163,7 +171,7 @@ export const PublicPropertyPage = () => {
 
       setCalendarHint(null)
       setFeedback(null)
-      setPendingRange({ start, end, displayEnd: new Date(displayEndRaw) })
+      setPendingRange(range)
       setModalError(null)
       setIsModalOpen(true)
     },
@@ -176,14 +184,26 @@ export const PublicPropertyPage = () => {
     setModalError(null)
   }
 
-  const handleSubmitRequest = async (payload: { name: string; email?: string; phone?: string; notes?: string }) => {
-    if (!pendingRange || !data) return
+  const handleSubmitRequest = async (payload: {
+    name: string
+    email?: string
+    phone?: string
+    notes?: string
+    start: Date
+    end: Date
+  }) => {
+    if (!data) return
     setIsSubmitting(true)
     setModalError(null)
     try {
+      const overlapsBlocked = events.some((event) => rangesOverlap(event, payload.start, payload.end) && event.status !== 'declined')
+      if (overlapsBlocked) {
+        throw new Error('Las fechas elegidas ya están ocupadas o pendientes. Elige otro rango.')
+      }
+
       const response = await submitPublicRequest(data.publicSlug, {
-        start: pendingRange.start.toISOString(),
-        end: pendingRange.end.toISOString(),
+        start: payload.start.toISOString(),
+        end: payload.end.toISOString(),
         requesterName: payload.name,
         requesterEmail: payload.email,
         requesterPhone: payload.phone,

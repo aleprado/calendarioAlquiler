@@ -14,43 +14,45 @@ Aplicación web estilo Google Calendar para gestionar reservas de alojamientos. 
 ```bash
 # instalar dependencias de la app
 npm install
+npm --prefix functions install
 
 # configurar variables de entorno del frontend
 cat <<'ENV' > .env.local
-VITE_API_BASE_URL=https://REGION-PROJECT.cloudfunctions.net/calendar-api
-VITE_PROPERTY_ID=default-property
-# credenciales codificadas en base64 con formato usuario:password
-VITE_API_BASIC_AUTH=bXktdXNlcjpteS1wYXNz
+VITE_API_BASE_URL=http://localhost:8080
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_APP_ID=...
+# opcionales
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_GOOGLE_MAPS_EMBED_API_KEY=...
 ENV
 
-# levantar el frontend (http://localhost:5173)
-npm run dev
+# compilar y levantar la Cloud Function local (http://localhost:8080)
+npm --prefix functions run build
+npm --prefix functions run dev
 
-# comprobaciones rápidas
-npm run lint
-npm run build
+# en otra terminal, levantar frontend (http://localhost:5173)
+npm run dev
 ```
 
-### Probar la Cloud Function en local
+La API espera `Bearer <Firebase ID Token>` en rutas privadas (`/properties/*`). Antes de correr la Function local, configura credenciales de Firebase Admin:
 
 ```bash
-cd functions
-npm install
-npm run build
-npm run dev   # expone calendarApi en http://localhost:8080
+export GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/service-account.json
 ```
 
-Las rutas expuestas (con Basic Auth) son:
+Rutas relevantes:
 
-- `GET /health` – chequeo de vida (no requiere auth).
-- `GET /properties/:propertyId/events` – lista de eventos persistidos en Firestore.
-- `POST /properties/:propertyId/events` – crea un evento manual (`title`, `start`, `end`).
-- `DELETE /properties/:propertyId/events/:eventId` – elimina un evento.
-- `POST /properties/:propertyId/airbnb/sync` – recibe `{ icalUrl, includeTentative? }`, descarga el feed de Airbnb y reemplaza los eventos fuente `airbnb`.
+- `GET /health` (sin auth)
+- `GET|POST|PATCH /properties/...` (auth requerida)
+- `POST /properties/resolve-map-link` (auth requerida)
+- `POST /properties/import-google-photos` (auth requerida)
+- `GET /public/properties/:publicSlug` (sin auth)
+- `POST /public/properties/:publicSlug/requests` (sin auth)
 
 > Los feeds iCal de Airbnb tienen la forma `https://www.airbnb.com/calendar/ical/<listing_id>/<secret>.ics` y se obtienen desde _Disponibilidad → Exportar calendario_ en el panel del hospedaje.
-
-> Define las variables `BASIC_AUTH_USER` y `BASIC_AUTH_PASSWORD` al lanzar `npm run dev` para autenticarte en local (`ALLOW_UNAUTHENTICATED=true` desactiva el check para pruebas).
 
 ## Despliegue con Terraform
 

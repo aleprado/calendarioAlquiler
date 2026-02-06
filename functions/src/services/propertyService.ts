@@ -1,5 +1,6 @@
 import type { PropertyRecord } from '../repositories/propertyRepository'
 import { propertyRepository } from '../repositories/propertyRepository'
+import { mapLinkService } from './mapLinkService'
 import { ServiceError } from '../utils/errors'
 
 export interface CreatePropertyPayload {
@@ -56,6 +57,9 @@ const sanitizeStringList = (value?: string[]) => {
   return value.map((item) => item.trim()).filter((item) => item.length > 0)
 }
 
+const hasCoordinates = (lat: number | null | undefined, lng: number | null | undefined) =>
+  typeof lat === 'number' && Number.isFinite(lat) && typeof lng === 'number' && Number.isFinite(lng)
+
 export class PropertyService {
   private assertAccess(userId: string, property: PropertyRecord | null): PropertyRecord {
     if (!property) {
@@ -84,6 +88,29 @@ export class PropertyService {
       throw new ServiceError('El enlace de iCal de Airbnb es obligatorio')
     }
 
+    const sanitizedPinUrl = sanitizeOptionalUrl(payload.googleMapsPinUrl)
+    let resolvedMap:
+      | {
+          resolvedUrl: string
+          googleMapsPlaceId: string | null
+          googleMapsLat: number | null
+          googleMapsLng: number | null
+          locationLabel: string | null
+        }
+      | null = null
+
+    if (
+      typeof sanitizedPinUrl === 'string' &&
+      !sanitizeOptionalText(payload.googleMapsPlaceId) &&
+      !hasCoordinates(payload.googleMapsLat, payload.googleMapsLng)
+    ) {
+      try {
+        resolvedMap = await mapLinkService.resolveGoogleMapsLink(sanitizedPinUrl)
+      } catch {
+        resolvedMap = null
+      }
+    }
+
     return await propertyRepository.create({
       ownerId: userId,
       name: payload.name.trim(),
@@ -91,11 +118,11 @@ export class PropertyService {
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl) ?? null,
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl) ?? null,
       description: sanitizeOptionalText(payload.description) ?? null,
-      locationLabel: sanitizeOptionalText(payload.locationLabel) ?? null,
-      googleMapsPinUrl: sanitizeOptionalUrl(payload.googleMapsPinUrl) ?? null,
-      googleMapsPlaceId: sanitizeOptionalText(payload.googleMapsPlaceId) ?? null,
-      googleMapsLat: payload.googleMapsLat ?? null,
-      googleMapsLng: payload.googleMapsLng ?? null,
+      locationLabel: sanitizeOptionalText(payload.locationLabel) ?? resolvedMap?.locationLabel ?? null,
+      googleMapsPinUrl: (resolvedMap?.resolvedUrl ?? sanitizedPinUrl) ?? null,
+      googleMapsPlaceId: sanitizeOptionalText(payload.googleMapsPlaceId) ?? resolvedMap?.googleMapsPlaceId ?? null,
+      googleMapsLat: payload.googleMapsLat ?? resolvedMap?.googleMapsLat ?? null,
+      googleMapsLng: payload.googleMapsLng ?? resolvedMap?.googleMapsLng ?? null,
       showGoogleReviews: payload.showGoogleReviews === true,
       googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl) ?? null,
       galleryImageUrls: sanitizeStringList(payload.galleryImageUrls) ?? [],
@@ -106,17 +133,46 @@ export class PropertyService {
   async update(userId: string, propertyId: string, payload: UpdatePropertyPayload): Promise<PropertyRecord> {
     this.assertAccess(userId, await propertyRepository.getById(propertyId))
 
+    const sanitizedPinUrl = sanitizeOptionalUrl(payload.googleMapsPinUrl)
+    const sanitizedPlaceId = sanitizeOptionalText(payload.googleMapsPlaceId)
+    const sanitizedLocationLabel = sanitizeOptionalText(payload.locationLabel)
+    const canResolveMapFields =
+      typeof sanitizedPinUrl === 'string' &&
+      sanitizedPlaceId === undefined &&
+      payload.googleMapsLat === undefined &&
+      payload.googleMapsLng === undefined &&
+      sanitizedLocationLabel === undefined
+
+    let resolvedMap:
+      | {
+          resolvedUrl: string
+          googleMapsPlaceId: string | null
+          googleMapsLat: number | null
+          googleMapsLng: number | null
+          locationLabel: string | null
+        }
+      | null = null
+    if (canResolveMapFields) {
+      try {
+        resolvedMap = await mapLinkService.resolveGoogleMapsLink(sanitizedPinUrl)
+      } catch {
+        resolvedMap = null
+      }
+    }
+
     return await propertyRepository.update(propertyId, {
       name: payload.name,
       airbnbIcalUrl: payload.airbnbIcalUrl,
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl),
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl),
       description: sanitizeOptionalText(payload.description),
-      locationLabel: sanitizeOptionalText(payload.locationLabel),
-      googleMapsPinUrl: sanitizeOptionalUrl(payload.googleMapsPinUrl),
-      googleMapsPlaceId: sanitizeOptionalText(payload.googleMapsPlaceId),
-      googleMapsLat: payload.googleMapsLat,
-      googleMapsLng: payload.googleMapsLng,
+      locationLabel:
+        sanitizedLocationLabel !== undefined ? sanitizedLocationLabel : (resolvedMap?.locationLabel ?? undefined),
+      googleMapsPinUrl: sanitizedPinUrl !== undefined ? (resolvedMap?.resolvedUrl ?? sanitizedPinUrl) : undefined,
+      googleMapsPlaceId:
+        sanitizedPlaceId !== undefined ? sanitizedPlaceId : (resolvedMap?.googleMapsPlaceId ?? undefined),
+      googleMapsLat: payload.googleMapsLat !== undefined ? payload.googleMapsLat : (resolvedMap?.googleMapsLat ?? undefined),
+      googleMapsLng: payload.googleMapsLng !== undefined ? payload.googleMapsLng : (resolvedMap?.googleMapsLng ?? undefined),
       showGoogleReviews: payload.showGoogleReviews,
       googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl),
       galleryImageUrls: sanitizeStringList(payload.galleryImageUrls),
