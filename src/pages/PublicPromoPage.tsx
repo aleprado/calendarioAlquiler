@@ -246,31 +246,26 @@ export const PublicPromoPage = () => {
                 <Link className="primary" to={`/public/${data.publicSlug}/calendario`}>
                   Ver disponibilidad
                 </Link>
-                {data.googlePhotosUrl && (
-                  <a className="secondary" href={data.googlePhotosUrl} target="_blank" rel="noopener noreferrer">
-                    Abrir album
-                  </a>
-                )}
               </div>
 
               <div className="promo-meta-grid">
-                <div className="promo-meta-card">
+                <a className="promo-meta-card promo-meta-card--link" href="#seccion-ubicacion">
                   <h3>Ubicación</h3>
                   <p>{data.locationLabel ?? 'Configura la ubicación desde gestión para mostrar el pin exacto.'}</p>
-                </div>
-                <div className="promo-meta-card">
+                </a>
+                <a className="promo-meta-card promo-meta-card--link" href="#seccion-galeria">
                   <h3>Google Fotos</h3>
                   <p>{data.googlePhotosUrl ? 'Album conectado para compartir fotos.' : 'No hay álbum conectado aún.'}</p>
-                </div>
-                <div className="promo-meta-card">
+                </a>
+                <a className="promo-meta-card promo-meta-card--link" href="#seccion-instagram">
                   <h3>Instagram</h3>
                   <p>{instagramUsername ? `Perfil @${instagramUsername}` : 'No hay perfil configurado aún.'}</p>
-                </div>
+                </a>
               </div>
             </div>
           </header>
 
-          <section className="promo-section">
+          <section id="seccion-galeria" className="promo-section">
             <div className="promo-section__header">
               <h2>Galeria</h2>
               {images.length > 0 && (
@@ -348,7 +343,7 @@ export const PublicPromoPage = () => {
             )}
           </section>
 
-          <section className="promo-section">
+          <section id="seccion-ubicacion" className="promo-section">
             <div className="promo-section__header">
               <h2>Ubicacion</h2>
               {data.locationLabel && <p>{data.locationLabel}</p>}
@@ -369,20 +364,26 @@ export const PublicPromoPage = () => {
               </div>
             )}
 
-            {data.googleMapsPinUrl && (
-              <a className="secondary" href={data.googleMapsPinUrl} target="_blank" rel="noopener noreferrer">
-                Abrir ubicación en Google Maps
-              </a>
-            )}
+            {(data.googleMapsPinUrl || (data.showGoogleReviews && reviewsUrl)) && (
+              <div className="promo-location-links">
+                {data.googleMapsPinUrl && (
+                  <a className="promo-location-link" href={data.googleMapsPinUrl} target="_blank" rel="noopener noreferrer">
+                    Abrir ubicación en Google Maps
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                )}
 
-            {data.showGoogleReviews && reviewsUrl && (
-              <a className="secondary" href={reviewsUrl} target="_blank" rel="noopener noreferrer">
-                Ver reseñas en Google Maps
-              </a>
+                {data.showGoogleReviews && reviewsUrl && (
+                  <a className="promo-location-link promo-location-link--soft" href={reviewsUrl} target="_blank" rel="noopener noreferrer">
+                    Ver reseñas en Google Maps
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                )}
+              </div>
             )}
           </section>
 
-          <section className="promo-section">
+          <section id="seccion-instagram" className="promo-section">
             <div className="promo-section__header">
               <h2>Instagram</h2>
             </div>
