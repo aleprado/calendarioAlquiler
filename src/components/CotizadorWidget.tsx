@@ -66,8 +66,8 @@ export const CotizadorWidget = ({
   const defaultStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const defaultEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
 
-  const [startDateStr, setStartDateStr] = useState(initialStartDate || formatDateLocal(defaultStart))
-  const [endDateStr, setEndDateStr] = useState(initialEndDate || formatDateLocal(defaultEnd))
+  const [startDateStr, setStartDateStr] = useState(initialStartDate || '')
+  const [endDateStr, setEndDateStr] = useState(initialEndDate || '')
   const [rates, setRates] = useState<ExchangeRates | null>(null)
   const [loadingRates, setLoadingRates] = useState(true)
   const [showInfoDetails, setShowInfoDetails] = useState(false)
