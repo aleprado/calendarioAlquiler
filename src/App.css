@@ -3004,8 +3004,100 @@ a.danger {
   padding: 1rem 0;
 }
 
+/* ==================================================== */
+/* RESPONSIVE FIXES (MOBILE & TABLET)                   */
+/* ==================================================== */
+@media (max-width: 768px) {
+  /* --- 1. Vista Pública (Promo Page) --- */
+  .promo-hero {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding: 1.25rem 1rem;
+  }
+  
+  .promo-hero__content {
+    align-items: center;
+    text-align: center;
+    padding: 0;
+  }
 
+  .promo-hero__content h1 {
+    font-size: clamp(1.8rem, 7vw, 2.5rem);
+  }
 
+  .promo-hero__actions {
+    justify-content: center;
+    width: 100%;
+  }
 
+  .promo-hero__actions .primary,
+  .promo-hero__actions .secondary {
+    width: 100%;
+    min-width: unset;
+  }
 
+  .promo-meta-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.5rem;
+  }
 
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .lightbox-content {
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  
+  .lightbox-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* --- 2. Página de Configuración (Settings) --- */
+  .property-settings-page {
+    padding-bottom: 2rem;
+  }
+
+  .settings-form-body {
+    padding: 1.25rem 1rem;
+    gap: 1.5rem;
+  }
+
+  .settings-card-box {
+    padding: 1.25rem 1rem;
+  }
+
+  /* Colapsar grillas en móvil a 1 sola columna */
+  .form-grid-2,
+  .form-grid-3,
+  .settings-monthly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tabs-bar {
+    padding: 0.5rem 0.5rem;
+    gap: 0.25rem;
+  }
+  
+  .settings-tab-item {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  /* --- 3. Modales --- */
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .modal,
+  .modal--property-settings {
+    width: 100%;
+    max-height: 90vh; /* Seguridad para que no se salga de pantalla en iOS */
+    margin: 0;
+    padding: 1.25rem 1rem;
+  }
+}
