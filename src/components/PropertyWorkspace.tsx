@@ -11,7 +11,7 @@ import { CotizadorWidget } from './CotizadorWidget'
 import { MetricsView } from './MetricsView'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { getFirestoreDb } from '../lib/firebase'
-import { showReservationRequestNotification } from '../services/notificationService'
+import { registerPushSubscriptionForProperty, showReservationRequestNotification } from '../services/notificationService'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -349,7 +349,10 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
         }
       }
       await loadEvents(syncFailed ? { skipClearError: true } : undefined)
-      if (active) setIsSyncing(false)
+      if (active) {
+        setIsSyncing(false)
+        void registerPushSubscriptionForProperty(property.id)
+      }
     }
     bootstrap()
 

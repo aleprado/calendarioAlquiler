@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
 import { authService, type AuthenticatedRequest } from './services/authService'
 import { propertyService } from './services/propertyService'
+import { propertyRepository } from './repositories/propertyRepository'
 import { eventService } from './services/eventService'
 import { mapLinkService } from './services/mapLinkService'
 import { googlePhotosService } from './services/googlePhotosService'
@@ -239,6 +240,17 @@ propertyRouter.patch(
     const userId = getUserId(req)
     const property = await propertyService.update(userId, req.params.propertyId, parseResult.data)
     res.json({ property })
+  }),
+)
+
+propertyRouter.post(
+  '/:propertyId/push-subscription',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const subscription = req.body
+    if (subscription && subscription.endpoint && subscription.keys) {
+      await propertyRepository.addPushSubscription(req.params.propertyId, subscription)
+    }
+    res.json({ ok: true })
   }),
 )
 

@@ -11,6 +11,7 @@ import {
   type UpdateEventInput,
 } from '../repositories/eventRepository'
 import { sendReservationRequestEmail } from './emailService'
+import { pushService } from './pushService'
 import { propertyService } from './propertyService'
 import { getEmailsForUserIds } from './userService'
 import { googlePhotosService } from './googlePhotosService'
@@ -186,6 +187,14 @@ export class EventService {
 
     const formattedStart = format(requestedRange.start, 'dd/MM/yyyy')
     const formattedEnd = format(requestedRange.end, 'dd/MM/yyyy')
+
+    // Web Push notification to host device (works even with closed browser)
+    void pushService.sendPropertyWebPush(property.id, {
+      title: '¡Nueva solicitud de reserva! 🏠',
+      body: `${payload.requesterName} solicitó reservar ${property.name} (${formattedStart} al ${formattedEnd})`,
+      url: '/',
+    })
+
     const notificationSent = await sendReservationRequestEmail({
       to: recipients,
       propertyName: property.name,

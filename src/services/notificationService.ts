@@ -1,3 +1,20 @@
+import { apiRequest } from '../api/http'
+
+const VAPID_PUBLIC_KEY =
+  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+  'BN69lsJppxa6138aXSSN8KQ65SKPIXX34IYlUT6m7dZl06RpUaPy8UrfLLzHs5uu9YcOY6M4Ti_SmqxUTyaoHjo'
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}
+
 export const isNotificationSupported = (): boolean =>
   typeof window !== 'undefined' && 'Notification' in window
 
@@ -6,7 +23,7 @@ export const getNotificationPermission = (): NotificationPermission => {
   return Notification.permission
 }
 
-export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
+export const requestNotificationPermission = async (propertyId?: string): Promise<NotificationPermission> => {
   if (!isNotificationSupported()) return 'denied'
   try {
     const permission = await Notification.requestPermission()
@@ -14,6 +31,9 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
     if (permission === 'granted' && 'serviceWorker' in navigator) {
       try {
         await navigator.serviceWorker.register('/sw.js')
+        if (propertyId) {
+          await registerPushSubscriptionForProperty(propertyId)
+        }
       } catch (swErr) {
         console.warn('[NotificationService] Service Worker registration failed:', swErr)
       }
@@ -23,6 +43,33 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
   } catch (err) {
     console.warn('[NotificationService] Error requesting permission:', err)
     return 'denied'
+  }
+}
+
+export const registerPushSubscriptionForProperty = async (propertyId: string) => {
+  if (!isNotificationSupported() || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) {
+    return
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+
+    let sub = await reg.pushManager.getSubscription()
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
+    }
+
+    if (sub) {
+      await apiRequest(`/properties/${encodeURIComponent(propertyId)}/push-subscription`, {
+        method: 'POST',
+        json: sub.toJSON(),
+      })
+    }
+  } catch (err) {
+    console.warn('[NotificationService] Push subscription registration failed:', err)
   }
 }
 
@@ -72,7 +119,6 @@ export const showReservationRequestNotification = async (
   requesterName: string,
   dateRangeText: string,
 ) => {
-  // Always play sound on notification event
   playNotificationSound()
 
   if (!isNotificationSupported() || Notification.permission !== 'granted') return

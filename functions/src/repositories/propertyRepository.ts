@@ -65,6 +65,7 @@ export interface PropertyRecord {
   defaultCheckOutTime: string | null
   publicViewsCount: number
   publicQuotesCount: number
+  pushSubscriptions?: { endpoint: string; keys: { p256dh: string; auth: string } }[]
 }
 
 export interface CreatePropertyInput {
@@ -367,6 +368,26 @@ export class PropertyRepository {
     if (snapshot.empty) return
     await snapshot.docs[0].ref.update({
       publicQuotesCount: FieldValue.increment(1),
+    })
+  }
+
+  async addPushSubscription(
+    propertyId: string,
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ): Promise<void> {
+    const docRef = propertiesCollection.doc(propertyId)
+    const snapshot = await docRef.get()
+    if (!snapshot.exists) return
+
+    const data = snapshot.data()
+    const existingSubs: { endpoint: string; keys: { p256dh: string; auth: string } }[] = data?.pushSubscriptions ?? []
+    
+    // Avoid duplicate subscriptions with same endpoint
+    const filtered = existingSubs.filter((sub) => sub.endpoint !== subscription.endpoint)
+    filtered.push(subscription)
+
+    await docRef.update({
+      pushSubscriptions: filtered,
     })
   }
 }
