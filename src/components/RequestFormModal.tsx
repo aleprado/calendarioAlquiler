@@ -12,7 +12,6 @@ interface RequestFormModalProps {
 
 const formatter = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' })
 const formatRange = (start: Date, end: Date) => formatter.formatRange?.(start, end) ?? `${formatter.format(start)} → ${formatter.format(end)}`
-const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days)
 
 const toDateInputValue = (date: Date) => {
   const year = date.getFullYear()
@@ -76,25 +75,38 @@ export const RequestFormModal = ({
       return
     }
 
-    const parsedStart = fromDateInputValue(startDate)
-    const parsedEndInclusive = fromDateInputValue(endDate)
-    if (!parsedStart || !parsedEndInclusive) {
+    const sMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate)
+    const eMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endDate)
+    if (!sMatch || !eMatch) {
       setLocalError('Debes completar una fecha de inicio y una fecha de fin válidas.')
       return
     }
 
-    if (parsedEndInclusive < parsedStart) {
+    const sY = Number(sMatch[1])
+    const sM = Number(sMatch[2])
+    const sD = Number(sMatch[3])
+
+    const eY = Number(eMatch[1])
+    const eM = Number(eMatch[2])
+    const eD = Number(eMatch[3])
+
+    const startUtc = new Date(Date.UTC(sY, sM - 1, sD))
+    const endInclusiveUtc = new Date(Date.UTC(eY, eM - 1, eD))
+
+    if (endInclusiveUtc < startUtc) {
       setLocalError('La fecha de fin no puede ser anterior a la de inicio.')
       return
     }
+
+    const endExclusiveUtc = new Date(Date.UTC(eY, eM - 1, eD + 1))
 
     onSubmit({
       name: trimmed,
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
-      start: parsedStart,
-      end: addDays(parsedEndInclusive, 1),
+      start: startUtc,
+      end: endExclusiveUtc,
     })
   }
 
@@ -104,34 +116,49 @@ export const RequestFormModal = ({
     previewStart && previewEnd && previewEnd >= previewStart ? formatRange(previewStart, previewEnd) : formatRange(range.start, range.displayEnd)
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
-        <h2 id="request-modal-title">Solicitar reserva</h2>
-        <p className="modal-range">{rangeLabel}</p>
+    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+      <div className="modal modal--request" role="dialog" aria-modal="true" aria-labelledby="request-modal-title" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header-row">
+          <div>
+            <h2 id="request-modal-title">Solicitar reserva</h2>
+            <p className="modal-range">{rangeLabel}</p>
+          </div>
+          <button type="button" className="secondary modal-header-close" onClick={onCancel} disabled={isSubmitting}>
+            &times;
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="modal-form">
-          <label htmlFor="request-start-date">Fecha de inicio</label>
-          <input
-            id="request-start-date"
-            type="date"
-            value={startDate}
-            onChange={(event) => {
-              setStartDate(event.target.value)
-              setLocalError(null)
-            }}
-            disabled={isSubmitting}
-          />
-          <label htmlFor="request-end-date">Fecha de fin</label>
-          <input
-            id="request-end-date"
-            type="date"
-            value={endDate}
-            onChange={(event) => {
-              setEndDate(event.target.value)
-              setLocalError(null)
-            }}
-            disabled={isSubmitting}
-          />
-          <label htmlFor="request-name">Nombre</label>
+          <div className="coordinate-row">
+            <div>
+              <label htmlFor="request-start-date">Fecha de inicio</label>
+              <input
+                id="request-start-date"
+                type="date"
+                value={startDate}
+                onChange={(event) => {
+                  setStartDate(event.target.value)
+                  setLocalError(null)
+                }}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <label htmlFor="request-end-date">Fecha de fin</label>
+              <input
+                id="request-end-date"
+                type="date"
+                value={endDate}
+                onChange={(event) => {
+                  setEndDate(event.target.value)
+                  setLocalError(null)
+                }}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <label htmlFor="request-name">Nombre completo *</label>
           <input
             id="request-name"
             type="text"
@@ -145,37 +172,48 @@ export const RequestFormModal = ({
             placeholder="Tu nombre"
             required
           />
-          <label htmlFor="request-email">Email (opcional)</label>
-          <input
-            id="request-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            disabled={isSubmitting}
-            placeholder="tu@email.com"
-          />
-          <label htmlFor="request-phone">Teléfono (opcional)</label>
-          <input
-            id="request-phone"
-            type="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            disabled={isSubmitting}
-            placeholder="+54 11 1234 5678"
-          />
+
+          <div className="coordinate-row">
+            <div>
+              <label htmlFor="request-email">Email (opcional)</label>
+              <input
+                id="request-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                disabled={isSubmitting}
+                placeholder="tu@email.com"
+              />
+            </div>
+            <div>
+              <label htmlFor="request-phone">Teléfono (opcional)</label>
+              <input
+                id="request-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                disabled={isSubmitting}
+                placeholder="+54 11 1234 5678"
+              />
+            </div>
+          </div>
+
           <label htmlFor="request-notes">Notas (opcional)</label>
           <textarea
             id="request-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             disabled={isSubmitting}
-            placeholder="Detalles adicionales"
-            rows={3}
+            placeholder="Detalles adicionales sobre tu estadía"
+            rows={2}
           />
-          <div className="modal-errors" role="alert">
-            {localError && <span>{localError}</span>}
-            {!localError && errorMessage && <span>{errorMessage}</span>}
-          </div>
+
+          {(localError || errorMessage) && (
+            <div className="modal-errors" role="alert">
+              <span>{localError || errorMessage}</span>
+            </div>
+          )}
+
           <div className="modal-actions">
             <button type="button" className="secondary" onClick={onCancel} disabled={isSubmitting}>
               Cancelar
