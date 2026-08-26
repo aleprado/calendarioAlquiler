@@ -63,7 +63,7 @@ export const MetricsView = ({ property, events }: MetricsViewProps) => {
       const start = startOfDay(evt.start)
       const end = startOfDay(evt.end)
       
-      let cursor = new Date(start.getTime())
+      const cursor = new Date(start.getTime())
       while (cursor < end) {
         if (cursor >= monthStart && cursor <= monthEnd) {
           occupiedDaysSet.add(cursor.getDate())
@@ -82,7 +82,7 @@ export const MetricsView = ({ property, events }: MetricsViewProps) => {
       const start = startOfDay(evt.start)
       const end = startOfDay(evt.end)
       
-      let cursor = new Date(start.getTime())
+      const cursor = new Date(start.getTime())
       while (cursor < end) {
         if (cursor >= today && cursor < next30End) {
           next30DaysSet.add(cursor.toISOString().slice(0, 10))
@@ -99,7 +99,7 @@ export const MetricsView = ({ property, events }: MetricsViewProps) => {
     confirmedEvents.forEach((evt) => {
       const start = startOfDay(evt.start)
       const end = startOfDay(evt.end)
-      let cursor = new Date(start.getTime())
+      const cursor = new Date(start.getTime())
 
       while (cursor < end) {
         const monthKey = String(cursor.getMonth() + 1)
