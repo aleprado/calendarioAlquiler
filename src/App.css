@@ -2575,57 +2575,28 @@ a.danger {
   box-shadow: 0 6px 18px rgba(13, 148, 136, 0.35);
 }
 
-/* ==================== Calendar Day Cell Overlays (Top 1/3 Out, Bottom 2/3 In) ==================== */
-.rbc-day-bg-custom-wrapper {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+/* ==================== Calendar Event Bar Half-Day Spans ==================== */
+.rbc-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s ease;
 }
 
-.cell-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-  pointer-events: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  letter-spacing: -0.01em;
+/* Event bar starts halfway on Check-in day (afternoon arrival) */
+.rbc-event.rbc-event-start:not(.rbc-event-continues-earlier) {
+  margin-left: 35% !important;
+  border-top-left-radius: 10px !important;
+  border-bottom-left-radius: 10px !important;
 }
 
-.cell-overlay__text {
-  padding: 0 2px;
-}
-
-.cell-overlay--full {
-  top: 0;
-  bottom: 0;
-  background-color: rgba(226, 232, 240, 0.65);
-  color: #475569;
-}
-
-.cell-overlay--checkout {
-  top: 0;
-  height: 33.33%;
-  background-color: rgba(254, 215, 215, 0.85);
-  color: #991b1b;
-  border-bottom: 1px dashed rgba(239, 68, 68, 0.4);
-}
-
-.cell-overlay--checkin {
-  bottom: 0;
-  height: 66.67%;
-  background-color: rgba(167, 243, 208, 0.85);
-  color: #065f46;
-  border-top: 1px dashed rgba(16, 185, 129, 0.4);
+/* Event bar ends halfway on Check-out day (morning departure) */
+.rbc-event.rbc-event-end:not(.rbc-event-continues-later) {
+  margin-right: 35% !important;
+  border-top-right-radius: 10px !important;
+  border-bottom-right-radius: 10px !important;
 }
 
 /* ==================== Interactive Visual Photo Grid & Cover Picker ==================== */

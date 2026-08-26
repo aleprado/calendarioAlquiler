@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FC } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react'
 import type { EventProps, SlotInfo } from 'react-big-calendar'
 import { addMonths, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -8,6 +8,7 @@ import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventCompon
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
 import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEvent, updateEventStatus } from '../api/events'
 import { CotizadorWidget } from './CotizadorWidget'
+import { showReservationRequestNotification } from '../services/notificationService'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -27,7 +28,19 @@ const normalizeSelectionRange = (start: Date, end: Date) => {
   return {
     start: normalizedStart,
     end: endExclusive,
-    displayEnd: addDays(endExclusive, -1),
+    displayEnd: endExclusive,
+  }
+}
+
+const normalizeSlotSelection = (start: Date, end: Date) => {
+  const normalizedStart = startOfDayLocal(start)
+  const normalizedEnd = startOfDayLocal(end)
+  const diffDays = Math.round((normalizedEnd.getTime() - normalizedStart.getTime()) / 86400000)
+  const effectiveEnd = diffDays > 1 ? addDays(normalizedEnd, -1) : (normalizedEnd <= normalizedStart ? addDays(normalizedStart, 1) : normalizedEnd)
+  return {
+    start: normalizedStart,
+    end: effectiveEnd,
+    displayEnd: effectiveEnd,
   }
 }
 
@@ -276,23 +289,46 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       .sort((left, right) => left.start.getTime() - right.start.getTime())
   }, [activeMonth, visibleEvents])
 
+  const knownPendingIdsRef = useRef<Set<string> | null>(null)
+
   const loadEvents = useCallback(
-    async (options?: { skipClearError?: boolean }) => {
-      setIsLoading(true)
+    async (options?: { skipClearError?: boolean; silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsLoading(true)
+      }
       if (!options?.skipClearError) {
         setGlobalError(null)
       }
       try {
         const payload = await fetchEvents(property.id)
         const mapped = payload.map(toCalendarEvent).sort((a, b) => a.start.getTime() - b.start.getTime())
+
+        // Detect newly created pending requests for sound chime & push notification
+        const pendingEvents = mapped.filter((evt) => evt.status === 'pending')
+        if (knownPendingIdsRef.current === null) {
+          knownPendingIdsRef.current = new Set(pendingEvents.map((evt) => evt.id))
+        } else {
+          for (const evt of pendingEvents) {
+            if (!knownPendingIdsRef.current.has(evt.id)) {
+              knownPendingIdsRef.current.add(evt.id)
+              const rangeText = `${format(evt.start, 'dd/MM/yyyy')} al ${format(evt.end, 'dd/MM/yyyy')}`
+              showReservationRequestNotification(property.name, evt.title || 'Solicitud web', rangeText)
+            }
+          }
+        }
+
         setEvents(mapped)
       } catch (error) {
-        setGlobalError(error instanceof Error ? error.message : 'No se pudieron cargar los eventos.')
+        if (!options?.silent) {
+          setGlobalError(error instanceof Error ? error.message : 'No se pudieron cargar los eventos.')
+        }
       } finally {
-        setIsLoading(false)
+        if (!options?.silent) {
+          setIsLoading(false)
+        }
       }
     },
-    [property.id],
+    [property.id, property.name],
   )
 
   useEffect(() => {
@@ -312,13 +348,22 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       if (active) setIsSyncing(false)
     }
     bootstrap()
+
+    // Poll every 10 seconds for new events & incoming notifications
+    const pollInterval = setInterval(() => {
+      if (active) {
+        void loadEvents({ skipClearError: true, silent: true })
+      }
+    }, 10000)
+
     return () => {
       active = false
+      clearInterval(pollInterval)
     }
   }, [loadEvents, property.id])
 
   const handleSelectSlot = useCallback((slot: SlotInfo) => {
-    setPendingRange(normalizeSelectionRange(slot.start, slot.end))
+    setPendingRange(normalizeSlotSelection(slot.start, slot.end))
     setEditingEvent(null)
     setModalError(null)
     setIsModalOpen(true)
@@ -549,8 +594,6 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
             showNavigator
             anchorMonth={activeMonth}
             onAnchorMonthChange={setActiveMonth}
-            checkInTime={property.defaultCheckInTime ?? '15:00'}
-            checkOutTime={property.defaultCheckOutTime ?? '11:00'}
           />
         )}
       </div>

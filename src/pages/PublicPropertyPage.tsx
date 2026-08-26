@@ -47,14 +47,30 @@ const ensureEndAfterStart = (start: Date, end: Date) => {
 }
 
 const startOfDayLocal = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
-const normalizeSelectionRange = (start: Date, end: Date) => {
+
+const normalizeSlotSelection = (start: Date, end: Date) => {
   const normalizedStart = startOfDayLocal(start)
   const normalizedEnd = startOfDayLocal(end)
-  const endExclusive = ensureEndAfterStart(normalizedStart, normalizedEnd)
+  const diffDays = Math.round((normalizedEnd.getTime() - normalizedStart.getTime()) / MS_IN_DAY)
+
+  const effectiveEnd = diffDays > 1 ? new Date(normalizedEnd.getTime() - MS_IN_DAY) : ensureEndAfterStart(normalizedStart, normalizedEnd)
+
   return {
     start: normalizedStart,
-    end: endExclusive,
-    displayEnd: endExclusive,
+    end: effectiveEnd,
+    displayEnd: effectiveEnd,
+  }
+}
+
+const normalizeDirectRange = (start: Date, end: Date) => {
+  const normalizedStart = startOfDayLocal(start)
+  const normalizedEnd = startOfDayLocal(end)
+  const effectiveEnd = ensureEndAfterStart(normalizedStart, normalizedEnd)
+
+  return {
+    start: normalizedStart,
+    end: effectiveEnd,
+    displayEnd: effectiveEnd,
   }
 }
 
@@ -169,7 +185,7 @@ export const PublicPropertyPage = () => {
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {
       if (!data) return
-      const range = normalizeSelectionRange(slot.start, slot.end)
+      const range = normalizeSlotSelection(slot.start, slot.end)
 
       const startStr = formatDateLocal(range.start)
       const endStr = formatDateLocal(range.end)
@@ -198,7 +214,7 @@ export const PublicPropertyPage = () => {
       const sDate = new Date(sP[0], sP[1] - 1, sP[2])
       const eDate = new Date(eP[0], eP[1] - 1, eP[2])
       if (!Number.isNaN(sDate.getTime()) && !Number.isNaN(eDate.getTime()) && eDate > sDate) {
-        const range = normalizeSelectionRange(sDate, eDate)
+        const range = normalizeDirectRange(sDate, eDate)
         setPendingRange(range)
       }
     }
@@ -211,7 +227,7 @@ export const PublicPropertyPage = () => {
       const sDate = new Date(sP[0], sP[1] - 1, sP[2])
       const eDate = new Date(eP[0], eP[1] - 1, eP[2])
       if (!Number.isNaN(sDate.getTime()) && !Number.isNaN(eDate.getTime()) && eDate > sDate) {
-        const range = normalizeSelectionRange(sDate, eDate)
+        const range = normalizeDirectRange(sDate, eDate)
         setPendingRange(range)
         setIsModalOpen(true)
       }
@@ -309,8 +325,6 @@ export const PublicPropertyPage = () => {
                 dayPropGetter={dayPropGetter}
                 monthsToShow={1}
                 showNavigator
-                checkInTime={data.defaultCheckInTime ?? '15:00'}
-                checkOutTime={data.defaultCheckOutTime ?? '11:00'}
               />
             </section>
 
