@@ -13,6 +13,23 @@ export const submitPublicRequest = async (
     method: 'POST',
     json: payload,
   })
+
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      const channel = new BroadcastChannel('reservation_events')
+      channel.postMessage({
+        type: 'RESERVATION_REQUEST_CREATED',
+        publicSlug,
+        requesterName: payload.requesterName,
+        start: payload.start,
+        end: payload.end,
+      })
+      channel.close()
+    } catch {
+      // Ignore broadcast errors
+    }
+  }
+
   return { notificationSent: Boolean(data.notificationSent) }
 }
 

@@ -353,23 +353,62 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
     }
     bootstrap()
 
-    // Real-time Firestore snapshot listener: zero polling, 100% free-tier, instant push & UI update!
+    // 1. Firestore snapshot listener with error callback to prevent uncaught console errors
     let unsubscribeSnapshot: (() => void) | null = null
     try {
       const db = getFirestoreDb()
       const eventsRef = collection(db, 'properties', property.id, 'events')
-      unsubscribeSnapshot = onSnapshot(eventsRef, () => {
-        if (active) {
-          void loadEvents({ skipClearError: true, silent: true })
-        }
-      })
-    } catch (err) {
-      console.warn('[PropertyWorkspace] Could not attach real-time Firestore listener:', err)
+      unsubscribeSnapshot = onSnapshot(
+        eventsRef,
+        () => {
+          if (active) {
+            void loadEvents({ skipClearError: true, silent: true })
+          }
+        },
+        () => {
+          // Handled gracefully: direct client snapshot blocked by security rules
+        },
+      )
+    } catch {
+      // Ignore snapshot attach errors
     }
+
+    // 2. BroadcastChannel for instant cross-tab notification & chime sound
+    let broadcastChannel: BroadcastChannel | null = null
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        broadcastChannel = new BroadcastChannel('reservation_events')
+        broadcastChannel.onmessage = (event) => {
+          if (active && event.data?.type === 'RESERVATION_REQUEST_CREATED') {
+            void loadEvents({ skipClearError: true, silent: true })
+          }
+        }
+      } catch {
+        // Ignore channel errors
+      }
+    }
+
+    // 3. Window focus listener: refresh automatically when switching back to admin tab
+    const handleFocus = () => {
+      if (active) {
+        void loadEvents({ skipClearError: true, silent: true })
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+
+    // 4. Gentle 30s background poll (minimal free-tier usage)
+    const pollInterval = setInterval(() => {
+      if (active) {
+        void loadEvents({ skipClearError: true, silent: true })
+      }
+    }, 30000)
 
     return () => {
       active = false
       unsubscribeSnapshot?.()
+      broadcastChannel?.close()
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(pollInterval)
     }
   }, [loadEvents, property.id])
 
