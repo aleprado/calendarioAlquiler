@@ -129,8 +129,8 @@ export const PublicPromoPage = () => {
     setModalError(null)
     try {
       const response = await submitPublicRequest(data.publicSlug, {
-        start: payload.start.toISOString(),
-        end: payload.end.toISOString(),
+        start: `${payload.start.getFullYear()}-${String(payload.start.getMonth() + 1).padStart(2, '0')}-${String(payload.start.getDate()).padStart(2, '0')}T00:00:00.000Z`,
+        end: `${payload.end.getFullYear()}-${String(payload.end.getMonth() + 1).padStart(2, '0')}-${String(payload.end.getDate()).padStart(2, '0')}T00:00:00.000Z`,
         requesterName: payload.name,
         requesterEmail: payload.email,
         requesterPhone: payload.phone,

@@ -14,6 +14,13 @@ const formatDateLocal = (d: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const toIsoDateString = (d: Date) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}T00:00:00.000Z`
+}
+
 const calendarMessages = {
   date: 'Fecha',
   time: 'Hora',
@@ -258,8 +265,8 @@ export const PublicPropertyPage = () => {
       }
 
       const response = await submitPublicRequest(data.publicSlug, {
-        start: payload.start.toISOString(),
-        end: payload.end.toISOString(),
+        start: toIsoDateString(payload.start),
+        end: toIsoDateString(payload.end),
         requesterName: payload.name,
         requesterEmail: payload.email,
         requesterPhone: payload.phone,

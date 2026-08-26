@@ -90,10 +90,10 @@ export const RequestFormModal = ({
     const eM = Number(eMatch[2])
     const eD = Number(eMatch[3])
 
-    const startUtc = new Date(Date.UTC(sY, sM - 1, sD))
-    const endUtc = new Date(Date.UTC(eY, eM - 1, eD))
+    const startLocal = new Date(sY, sM - 1, sD)
+    const endLocal = new Date(eY, eM - 1, eD)
 
-    if (endUtc <= startUtc) {
+    if (endLocal <= startLocal) {
       setLocalError('La fecha de salida debe ser posterior a la fecha de entrada.')
       return
     }
@@ -103,8 +103,8 @@ export const RequestFormModal = ({
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
-      start: startUtc,
-      end: endUtc,
+      start: startLocal,
+      end: endLocal,
     })
   }
 
