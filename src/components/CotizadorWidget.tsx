@@ -197,12 +197,17 @@ export const CotizadorWidget = ({
     const totalUSD = baseStayUSD + commissionUSD + cleaningUSD
     const totalNights = nights.length
     const avgNightUSD = totalNights > 0 ? totalUSD / totalNights : 0
+    const extraPerNightUSD = totalNights > 0 ? (commissionUSD + cleaningUSD) / totalNights : 0
+
+    const effectiveNights = mode === 'public'
+      ? nights.map((n) => ({ ...n, nightRateUSD: n.nightRateUSD + extraPerNightUSD }))
+      : nights
 
     return {
       startDate,
       endDate,
       totalNights,
-      nights,
+      nights: effectiveNights,
       baseStayUSD,
       commissionUSD,
       cleaningUSD,
@@ -352,7 +357,7 @@ export const CotizadorWidget = ({
             </button>
           )}
 
-          {(mode === 'private' || adminCommissionPercent > 0 || cleaningFeeUSD > 0) && (
+          {mode === 'private' && (
             <div className="cotizador-private-breakdown">
               <div className="breakdown-item">
                 <span>Subtotal hospedaje:</span>
