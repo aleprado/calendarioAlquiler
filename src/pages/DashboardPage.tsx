@@ -11,6 +11,8 @@ import {
 } from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
+import { Logo } from '../components/Logo'
+import { useToast } from '../components/ToastNotification'
 
 const getPublicUrl = (property: PropertyDTO) => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -107,13 +109,13 @@ const INITIAL_FORM = {
 
 export const DashboardPage = () => {
   const { user, signOut } = useAuth()
+  const { showToast } = useToast()
   const [properties, setProperties] = useState<PropertyDTO[]>([])
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [createForm, setCreateForm] = useState(INITIAL_FORM)
-  const [copyFeedback, setCopyFeedback] = useState<'link' | 'calendar' | 'code' | null>(null)
   const [isPropertyMenuOpen, setIsPropertyMenuOpen] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -214,6 +216,7 @@ export const DashboardPage = () => {
       setProperties((prev) => [...prev, created])
       setSelectedPropertyId(created.id)
       setCreateForm(INITIAL_FORM)
+      showToast('Propiedad creada exitosamente', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la propiedad.')
     } finally {
@@ -225,8 +228,7 @@ export const DashboardPage = () => {
     if (!selectedProperty) return
     try {
       await navigator.clipboard.writeText(getPublicUrl(selectedProperty))
-      setCopyFeedback('link')
-      window.setTimeout(() => setCopyFeedback(null), 2000)
+      showToast('Link público copiado al portapapeles', 'success')
       setIsPropertyMenuOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo copiar el link. Copialo manualmente.')
@@ -237,8 +239,7 @@ export const DashboardPage = () => {
     if (!selectedProperty) return
     try {
       await navigator.clipboard.writeText(selectedProperty.shareCode)
-      setCopyFeedback('code')
-      window.setTimeout(() => setCopyFeedback(null), 2000)
+      showToast('Código de acceso copiado', 'success')
       setIsPropertyMenuOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo copiar el código. Copialo manualmente.')
@@ -249,8 +250,7 @@ export const DashboardPage = () => {
     if (!selectedProperty) return
     try {
       await navigator.clipboard.writeText(getPublicCalendarUrl(selectedProperty))
-      setCopyFeedback('calendar')
-      window.setTimeout(() => setCopyFeedback(null), 2000)
+      showToast('Link del calendario copiado', 'success')
       setIsPropertyMenuOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo copiar el link del calendario. Copialo manualmente.')
@@ -479,6 +479,7 @@ export const DashboardPage = () => {
     <div className="dashboard-layout">
       <header className="dashboard-topbar">
         <div className="topbar-left">
+          <Logo size="sm" />
           <button type="button" className="link-button topbar-info-link" onClick={() => setIsInfoOpen(true)}>
             Conoce la app
           </button>
@@ -563,15 +564,6 @@ export const DashboardPage = () => {
                       Agregar propiedad con código
                     </button>
                   </div>
-                  {copyFeedback && (
-                    <div className="menu-hint">
-                      {copyFeedback === 'link'
-                        ? '¡Link público copiado!'
-                        : copyFeedback === 'calendar'
-                          ? '¡Link del calendario copiado!'
-                          : '¡Código copiado!'}
-                    </div>
-                  )}
                 </div>
               )}
             </div>

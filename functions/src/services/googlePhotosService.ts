@@ -1,7 +1,7 @@
 import { fetchImageUrls } from 'google-photos-album-image-url-fetch'
 import { ServiceError } from '../utils/errors'
 
-const MAX_IMAGES = 24
+const MAX_IMAGES = 200
 const VALID_HOSTS = new Set(['photos.app.goo.gl', 'photos.google.com'])
 
 export interface ImportedGooglePhotosAlbum {

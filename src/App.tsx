@@ -26,21 +26,25 @@ const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   return children
 }
 
+import { ToastProvider } from './components/ToastNotification'
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/public/:publicSlug" element={<PublicPromoPage />} />
-      <Route path="/public/:publicSlug/calendario" element={<PublicPropertyPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ToastProvider>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/public/:publicSlug" element={<PublicPromoPage />} />
+        <Route path="/public/:publicSlug/calendario" element={<PublicPropertyPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ToastProvider>
   )
 }

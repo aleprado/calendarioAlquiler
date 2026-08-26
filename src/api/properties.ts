@@ -69,7 +69,7 @@ export const resolveGoogleMapsLink = async (url: string): Promise<ResolvedGoogle
   return data.resolved
 }
 
-export const importGooglePhotosAlbum = async (url: string, limit = 24): Promise<ImportedGooglePhotosAlbumDTO> => {
+export const importGooglePhotosAlbum = async (url: string, limit = 100): Promise<ImportedGooglePhotosAlbumDTO> => {
   const data = await apiRequest<{ imported: ImportedGooglePhotosAlbumDTO }>('/properties/import-google-photos', {
     method: 'POST',
     auth: true,

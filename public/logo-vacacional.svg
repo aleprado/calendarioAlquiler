@@ -1,33 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" role="img" aria-labelledby="title desc">
-  <title id="title">simplealquiler.net</title>
-  <desc id="desc">Logo vacacional con casa, sol y olas para simplealquiler.net.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
   <defs>
-    <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffd166" />
-      <stop offset="100%" stop-color="#f97316" />
+    <linearGradient id="bg-grad" x1="10" y1="10" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="50%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#0284c7"/>
     </linearGradient>
-    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0ea5e9" />
-      <stop offset="100%" stop-color="#155e75" />
+    <linearGradient id="sun-grad" x1="60" y1="20" x2="100" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f97316"/>
     </linearGradient>
-    <linearGradient id="roof" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f766e" />
-      <stop offset="100%" stop-color="#0f172a" />
+    <linearGradient id="roof-grad" x1="20" y1="50" x2="100" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
     </linearGradient>
+    <filter id="shadow" x="0" y="0" width="120" height="120" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
   </defs>
 
-  <g transform="translate(24 24)">
-    <rect width="132" height="132" rx="28" fill="#f8fafc" />
-    <circle cx="98" cy="36" r="18" fill="url(#sun)" />
-    <path d="M18 80 66 42l48 38" fill="none" stroke="url(#roof)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M35 80h62v43H35z" fill="#ffffff" stroke="#0f172a" stroke-width="8" stroke-linejoin="round" />
-    <path d="M55 94h22v29H55z" fill="#cffafe" stroke="#155e75" stroke-width="6" stroke-linejoin="round" />
-    <path d="M16 123c10 0 10 6 20 6s10-6 20-6 10 6 20 6 10-6 20-6 10 6 20 6" fill="none" stroke="url(#sea)" stroke-width="7" stroke-linecap="round" />
-  </g>
+  <!-- Base Rounded Container with Drop Shadow -->
+  <rect x="8" y="8" width="104" height="104" rx="28" fill="url(#bg-grad)" filter="url(#shadow)"/>
+  
+  <!-- Subtle Wave Background Pattern -->
+  <path d="M12 85 C 35 75, 65 95, 108 82 L 108 108 L 12 108 Z" fill="#ffffff" fill-opacity="0.08"/>
 
-  <g transform="translate(180 42)">
-    <text x="0" y="40" font-size="42" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="700" fill="#0f172a">simple</text>
-    <text x="0" y="86" font-size="38" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="600" fill="#0f766e">alquiler.net</text>
-    <text x="2" y="116" font-size="20" font-family="'Sora','Avenir Next','Trebuchet MS',sans-serif" font-weight="500" fill="#0369a1">gestion vacacional profesional</text>
-  </g>
+  <!-- Sun / Warm Accent -->
+  <circle cx="82" cy="42" r="14" fill="url(#sun-grad)"/>
+
+  <!-- Stylized House Roof & Calendar Elements -->
+  <!-- Roof curve -->
+  <path d="M 30 60 L 60 32 L 90 60" stroke="url(#roof-grad)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- House Body / Calendar Frame -->
+  <rect x="38" y="58" width="44" height="34" rx="6" fill="#ffffff" fill-opacity="0.95"/>
+  
+  <!-- Calendar Header Line -->
+  <path d="M 38 68 L 82 68" stroke="#0f766e" stroke-width="2.5"/>
+
+  <!-- Calendar Pins / Hooks -->
+  <circle cx="48" cy="54" r="2.5" fill="#ffffff"/>
+  <circle cx="72" cy="54" r="2.5" fill="#ffffff"/>
+
+  <!-- Calendar Grid Dots / Days -->
+  <circle cx="48" cy="76" r="2.5" fill="#0d9488"/>
+  <circle cx="60" cy="76" r="2.5" fill="#0d9488"/>
+  <circle cx="72" cy="76" r="2.5" fill="#0d9488"/>
+
+  <circle cx="48" cy="84" r="2.5" fill="#f97316"/>
+  <circle cx="60" cy="84" r="2.5" fill="#0d9488"/>
+  <circle cx="72" cy="84" r="2.5" fill="#0d9488"/>
 </svg>

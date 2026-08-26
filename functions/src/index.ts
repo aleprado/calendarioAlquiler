@@ -42,7 +42,7 @@ const socialLinkSchema = z.union([z.string().trim().url('Debe ser una URL válid
 const optionalTextSchema = z.union([z.string().trim().min(1), z.literal(null)])
 const optionalLatSchema = z.union([z.number().min(-90).max(90), z.literal(null)])
 const optionalLngSchema = z.union([z.number().min(-180).max(180), z.literal(null)])
-const imageUrlListSchema = z.array(z.string().trim().url('Cada imagen debe ser una URL válida')).max(24)
+const imageUrlListSchema = z.array(z.string().trim().url('Cada imagen debe ser una URL válida')).max(200)
 const instagramPostListSchema = z.array(z.string().trim().url('Cada post de Instagram debe ser una URL válida')).max(6)
 
 const monthlyRatesSchema = z.record(z.string(), z.number().min(0))
@@ -144,7 +144,7 @@ const mapResolveSchema = z.object({
 
 const googlePhotosImportSchema = z.object({
   url: z.string().url('La URL del álbum debe ser válida'),
-  limit: z.number().int().min(1).max(24).optional(),
+  limit: z.number().int().min(1).max(200).optional(),
 })
 
 const propertyRouter = express.Router()

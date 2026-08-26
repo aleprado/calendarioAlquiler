@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { Logo } from '../components/Logo'
 
 export const LandingPage = () => {
   const { user, loading, signIn } = useAuth()
@@ -27,7 +28,7 @@ export const LandingPage = () => {
     <div className="landing-layout">
       <main className="landing-main">
         <header className="landing-hero landing-hero--centered">
-          <img src="/logo-vacacional.svg" alt="simplealquiler.net" className="landing-logo" />
+          <Logo size="lg" showText={false} className="landing-logo" />
           <h1>
             simplealquiler<span>.net</span>
           </h1>
