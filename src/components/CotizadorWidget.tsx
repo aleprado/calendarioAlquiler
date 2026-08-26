@@ -95,19 +95,21 @@ export const CotizadorWidget = ({
       return null
     }
 
-    const nights: { date: Date; monthIndex: number; monthName: string; year: number; nightRateUSD: number }[] = []
+    const nights: { date: Date; dateKey: string; monthIndex: number; monthName: string; year: number; nightRateUSD: number }[] = []
     const cursor = new Date(startDate.getTime())
 
     while (cursor < endDate) {
       const year = cursor.getFullYear()
       const monthIndex = cursor.getMonth()
       const monthKey = String(monthIndex + 1)
+      const dateKey = formatDateLocal(cursor)
 
       // Rate configured for that month is the price per night (USD/noche)
       const nightRateUSD = monthlyRatesUSD[monthKey] ?? monthlyRatesUSD['default'] ?? 50
 
       nights.push({
         date: new Date(cursor.getTime()),
+        dateKey,
         monthIndex,
         monthName: MONTH_NAMES[monthIndex],
         year,
@@ -117,18 +119,40 @@ export const CotizadorWidget = ({
       cursor.setDate(cursor.getDate() + 1)
     }
 
-    let blockedNightCount = 0
+    // Build set of occupied night date keys (YYYY-MM-DD) from all sources (Airbnb iCal + app direct requests)
+    const occupiedNightKeys = new Set<string>()
     if (blockedEvents && blockedEvents.length > 0) {
-      for (const n of nights) {
-        const time = n.date.getTime()
-        const isBlocked = blockedEvents.some((evt) => {
-          const s = new Date(evt.start).getTime()
-          const e = new Date(evt.end).getTime()
-          return time >= s && time < e
-        })
-        if (isBlocked) {
-          blockedNightCount++
+      for (const evt of blockedEvents) {
+        const sMatch = evt.start.match(/^(\d{4}-\d{2}-\d{2})/)
+        const eMatch = evt.end.match(/^(\d{4}-\d{2}-\d{2})/)
+
+        let sDate: Date
+        let eDate: Date
+
+        if (sMatch && eMatch) {
+          const sP = sMatch[1].split('-').map(Number)
+          const eP = eMatch[1].split('-').map(Number)
+          sDate = new Date(sP[0], sP[1] - 1, sP[2])
+          eDate = new Date(eP[0], eP[1] - 1, eP[2])
+        } else {
+          sDate = new Date(evt.start)
+          eDate = new Date(evt.end)
         }
+
+        const evtCursor = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate())
+        const evtEnd = new Date(eDate.getFullYear(), eDate.getMonth(), eDate.getDate())
+
+        while (evtCursor < evtEnd) {
+          occupiedNightKeys.add(formatDateLocal(evtCursor))
+          evtCursor.setDate(evtCursor.getDate() + 1)
+        }
+      }
+    }
+
+    let blockedNightCount = 0
+    for (const n of nights) {
+      if (occupiedNightKeys.has(n.dateKey)) {
+        blockedNightCount++
       }
     }
 
