@@ -96,7 +96,7 @@ export const CotizadorWidget = ({
     }
 
     const nights: { date: Date; monthIndex: number; monthName: string; year: number; dailyRateUSD: number; monthlyRateUSD: number; daysInMonth: number }[] = []
-    let cursor = new Date(startDate.getTime())
+    const cursor = new Date(startDate.getTime())
 
     while (cursor < endDate) {
       const year = cursor.getFullYear()
