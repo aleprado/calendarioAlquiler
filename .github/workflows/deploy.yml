@@ -140,5 +140,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
           npx firebase-tools deploy --only firestore:rules --project "$PROJECT_ID"
-          
+
