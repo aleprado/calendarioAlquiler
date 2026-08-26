@@ -8,6 +8,10 @@ interface CotizadorWidgetProps {
   cleaningFeeUSD?: number
   customExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   blockedEvents?: { start: string; end: string }[]
+  initialStartDate?: string
+  initialEndDate?: string
+  onDatesChange?: (startStr: string, endStr: string) => void
+  onRequestReservation?: (startStr: string, endStr: string) => void
   onOpenSettings?: () => void
 }
 
@@ -52,17 +56,33 @@ export const CotizadorWidget = ({
   cleaningFeeUSD = 0,
   customExchangeRates,
   blockedEvents = [],
+  initialStartDate,
+  initialEndDate,
+  onDatesChange,
+  onRequestReservation,
   onOpenSettings,
 }: CotizadorWidgetProps) => {
   const today = new Date()
   const defaultStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const defaultEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
 
-  const [startDateStr, setStartDateStr] = useState(formatDateLocal(defaultStart))
-  const [endDateStr, setEndDateStr] = useState(formatDateLocal(defaultEnd))
+  const [startDateStr, setStartDateStr] = useState(initialStartDate || formatDateLocal(defaultStart))
+  const [endDateStr, setEndDateStr] = useState(initialEndDate || formatDateLocal(defaultEnd))
   const [rates, setRates] = useState<ExchangeRates | null>(null)
   const [loadingRates, setLoadingRates] = useState(true)
   const [showInfoDetails, setShowInfoDetails] = useState(false)
+
+  useEffect(() => {
+    if (initialStartDate) {
+      setStartDateStr(initialStartDate)
+    }
+  }, [initialStartDate])
+
+  useEffect(() => {
+    if (initialEndDate) {
+      setEndDateStr(initialEndDate)
+    }
+  }, [initialEndDate])
 
   useEffect(() => {
     let isMounted = true
@@ -234,7 +254,11 @@ export const CotizadorWidget = ({
             id="cotizador-start"
             type="date"
             value={startDateStr}
-            onChange={(e) => setStartDateStr(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setStartDateStr(val)
+              onDatesChange?.(val, endDateStr)
+            }}
           />
         </div>
         <div className="form-group">
@@ -244,7 +268,11 @@ export const CotizadorWidget = ({
             type="date"
             value={endDateStr}
             min={startDateStr}
-            onChange={(e) => setEndDateStr(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setEndDateStr(val)
+              onDatesChange?.(startDateStr, val)
+            }}
           />
         </div>
       </div>
@@ -265,7 +293,7 @@ export const CotizadorWidget = ({
               <strong>
                 {calculation.blockedNightCount} {calculation.blockedNightCount === 1 ? 'noche ocupada' : 'noches ocupadas'}
               </strong>{' '}
-              en el calendario de reservas. Consulta el calendario más abajo para elegir fechas libres.
+              en el calendario de reservas. Consulta el calendario para elegir fechas libres.
             </p>
           </div>
         </div>
@@ -294,6 +322,16 @@ export const CotizadorWidget = ({
               <span className="currency-card__per-night">{formatCurrency(converted.avgNightBRL, 'BRL')} / noche</span>
             </div>
           </div>
+
+          {onRequestReservation && (
+            <button
+              type="button"
+              className="primary cotizador-request-btn"
+              onClick={() => onRequestReservation(startDateStr, endDateStr)}
+            >
+              Solicitar reserva ({calculation.totalNights} {calculation.totalNights === 1 ? 'noche' : 'noches'})
+            </button>
+          )}
 
           {mode === 'private' && (
             <div className="cotizador-private-breakdown">

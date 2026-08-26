@@ -43,15 +43,37 @@ const validateGooglePhotosUrl = (rawUrl: string) => {
   return parsed.toString()
 }
 
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+interface CachedAlbumEntry {
+  timestamp: number
+  result: ImportedGooglePhotosAlbum
+}
+
 export class GooglePhotosService {
-  async importAlbumImages(rawUrl: string, limit = MAX_IMAGES): Promise<ImportedGooglePhotosAlbum> {
+  private cache = new Map<string, CachedAlbumEntry>()
+
+  async importAlbumImages(rawUrl: string, limit = MAX_IMAGES, skipCache = false): Promise<ImportedGooglePhotosAlbum> {
     const sourceUrl = validateGooglePhotosUrl(rawUrl)
     const normalizedLimit = Math.max(1, Math.min(MAX_IMAGES, Math.floor(limit)))
+
+    if (!skipCache) {
+      const cached = this.cache.get(sourceUrl)
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.result
+      }
+    }
 
     let items: Awaited<ReturnType<typeof fetchImageUrls>>
     try {
       items = await fetchImageUrls(sourceUrl)
     } catch (error) {
+      // If error occurs and we have a stale cache, return it instead of failing
+      const cached = this.cache.get(sourceUrl)
+      if (cached) {
+        return cached.result
+      }
+
       const message = error instanceof Error ? error.message : ''
       if (message.includes('404')) {
         throw new ServiceError('No se pudo abrir el álbum. Verifica que el link sea público.', 400)
@@ -60,6 +82,9 @@ export class GooglePhotosService {
     }
 
     if (!Array.isArray(items) || items.length === 0) {
+      const cached = this.cache.get(sourceUrl)
+      if (cached) return cached.result
+
       throw new ServiceError(
         'No encontramos imágenes en ese álbum. Confirma que sea público y que tenga fotos visibles.',
         400,
@@ -76,17 +101,28 @@ export class GooglePhotosService {
     ).slice(0, normalizedLimit)
 
     if (imageUrls.length === 0) {
+      const cached = this.cache.get(sourceUrl)
+      if (cached) return cached.result
+
       throw new ServiceError(
         'No logramos extraer URLs de imagen válidas desde el álbum. Prueba con otro link de Google Fotos.',
         400,
       )
     }
 
-    return {
+    const result: ImportedGooglePhotosAlbum = {
       sourceUrl,
       images: imageUrls,
     }
+
+    this.cache.set(sourceUrl, {
+      timestamp: Date.now(),
+      result,
+    })
+
+    return result
   }
 }
 
 export const googlePhotosService = new GooglePhotosService()
+

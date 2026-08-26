@@ -45,6 +45,7 @@ export interface PropertyRecord {
   updatedAt: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  coverImageUrl: string | null
   description: string | null
   locationLabel: string | null
   googleMapsPinUrl: string | null
@@ -68,6 +69,7 @@ export interface CreatePropertyInput {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -90,6 +92,7 @@ export interface UpdatePropertyInput {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -131,6 +134,7 @@ export class PropertyRepository {
       updatedAt: data.updatedAt ?? '',
       instagramUrl: normalizeOptionalString((data as Record<string, unknown>).instagramUrl),
       googlePhotosUrl: normalizeOptionalString((data as Record<string, unknown>).googlePhotosUrl),
+      coverImageUrl: normalizeOptionalString((data as Record<string, unknown>).coverImageUrl),
       description: normalizeOptionalString((data as Record<string, unknown>).description),
       locationLabel: normalizeOptionalString((data as Record<string, unknown>).locationLabel),
       googleMapsPinUrl: normalizeOptionalString((data as Record<string, unknown>).googleMapsPinUrl),
@@ -233,6 +237,7 @@ export class PropertyRepository {
       updatedAt: now,
       instagramUrl: normalizeOptionalString(input.instagramUrl),
       googlePhotosUrl: normalizeOptionalString(input.googlePhotosUrl),
+      coverImageUrl: normalizeOptionalString(input.coverImageUrl),
       description: normalizeOptionalString(input.description),
       locationLabel: normalizeOptionalString(input.locationLabel),
       googleMapsPinUrl: normalizeOptionalString(input.googleMapsPinUrl),
@@ -271,6 +276,9 @@ export class PropertyRepository {
         : {}),
       ...(updates.googlePhotosUrl !== undefined
         ? { googlePhotosUrl: normalizeOptionalString(updates.googlePhotosUrl) }
+        : {}),
+      ...(updates.coverImageUrl !== undefined
+        ? { coverImageUrl: normalizeOptionalString(updates.coverImageUrl) }
         : {}),
       ...(updates.description !== undefined ? { description: normalizeOptionalString(updates.description) } : {}),
       ...(updates.locationLabel !== undefined ? { locationLabel: normalizeOptionalString(updates.locationLabel) } : {}),

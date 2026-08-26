@@ -40,6 +40,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
     airbnbIcalUrl: property.airbnbIcalUrl,
     instagramUrl: property.instagramUrl ?? '',
     googlePhotosUrl: property.googlePhotosUrl ?? '',
+    coverImageUrl: property.coverImageUrl ?? '',
     description: property.description ?? '',
     locationLabel: property.locationLabel ?? '',
     googleMapsPinUrl: property.googleMapsPinUrl ?? '',
@@ -86,6 +87,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
 
       const trimmedInstagram = form.instagramUrl.trim()
       const trimmedGoogle = form.googlePhotosUrl.trim()
+      const trimmedCover = form.coverImageUrl.trim()
       const trimmedDesc = form.description.trim()
       const trimmedPin = form.googleMapsPinUrl.trim()
       const trimmedReviews = form.googleMapsReviewsUrl.trim()
@@ -99,6 +101,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
         airbnbIcalUrl: form.airbnbIcalUrl.trim(),
         instagramUrl: trimmedInstagram ? trimmedInstagram : null,
         googlePhotosUrl: trimmedGoogle ? trimmedGoogle : null,
+        coverImageUrl: trimmedCover ? trimmedCover : null,
         description: trimmedDesc ? trimmedDesc : null,
         locationLabel: effectiveLoc,
         googleMapsPinUrl: trimmedPin ? trimmedPin : null,
@@ -505,7 +508,24 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
           {activeTab === 'gallery' && (
             <section className="settings-section-panel">
               <div className="settings-card-box">
-                <h3>Importación desde Google Fotos</h3>
+                <h3>Foto Principal (Portada del Folleto Visual)</h3>
+                <div className="form-group">
+                  <label htmlFor="settings-cover-image">URL de Foto Principal (Opcional)</label>
+                  <input
+                    id="settings-cover-image"
+                    type="url"
+                    value={form.coverImageUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, coverImageUrl: e.target.value }))}
+                    placeholder="https://.../portada.jpg"
+                  />
+                  <span className="field-hint">
+                    Esta imagen se usará como el fondo principal del banner de tu propiedad. Si la dejas vacía, se tomará automáticamente la primera foto disponible de la galería.
+                  </span>
+                </div>
+              </div>
+
+              <div className="settings-card-box">
+                <h3>Álbum Dinámico de Google Fotos</h3>
                 <div className="form-group">
                   <label htmlFor="settings-gphotos-link">Enlace de Álbum Público de Google Fotos</label>
                   <div className="input-button-row">
@@ -517,15 +537,17 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                       placeholder="https://photos.app.goo.gl/tu_album"
                     />
                     <button type="button" className="secondary" onClick={() => void handleImportPhotos()} disabled={isImportingPhotos}>
-                      {isImportingPhotos ? 'Importando...' : 'Importar Fotos'}
+                      {isImportingPhotos ? 'Importando...' : 'Importar Fotos Manualmente'}
                     </button>
                   </div>
-                  <span className="field-hint">Extrae e integra automáticamente las URLs de las fotos del álbum (soporta hasta 200 fotos).</span>
+                  <span className="field-hint">
+                    Las fotos de este álbum se sincronizan automáticamente en tiempo real en la página pública (con caché). Usar &ldquo;Importar Fotos Manualmente&rdquo; copia las URLs directamente a la lista estática inferior si prefieres administrarlas manualmente.
+                  </span>
                 </div>
               </div>
 
               <div className="settings-card-box">
-                <h3>Colección de Imágenes de Galería</h3>
+                <h3>Colección Manual de Imágenes de Galería</h3>
                 <div className="form-group">
                   <label htmlFor="settings-gallery-list">URLs directas de Galería (Una por línea)</label>
                   <textarea

@@ -3,8 +3,16 @@ import type { SlotInfo } from 'react-big-calendar'
 import { Link, useParams } from 'react-router-dom'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from '../components/MultiMonthCalendar'
 import { RequestFormModal } from '../components/RequestFormModal'
+import { CotizadorWidget } from '../components/CotizadorWidget'
 import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
 import type { CalendarEvent, PublicAvailabilityDTO } from '../types'
+
+const formatDateLocal = (d: Date) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 const calendarMessages = {
   date: 'Fecha',

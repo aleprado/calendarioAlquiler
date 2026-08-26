@@ -13,6 +13,7 @@ import {
 import { sendReservationRequestEmail } from './emailService'
 import { propertyService } from './propertyService'
 import { getEmailsForUserIds } from './userService'
+import { googlePhotosService } from './googlePhotosService'
 import { ServiceError } from '../utils/errors'
 
 const blockingStatuses: EventStatus[] = ['confirmed', 'pending', 'tentative']
@@ -57,6 +58,7 @@ export interface PublicAvailabilityPayload {
   publicSlug: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  coverImageUrl: string | null
   description: string | null
   locationLabel: string | null
   googleMapsPinUrl: string | null
@@ -199,6 +201,20 @@ export class EventService {
       return null
     }
 
+    let galleryImageUrls = property.galleryImageUrls ?? []
+
+    if (property.googlePhotosUrl) {
+      try {
+        const imported = await googlePhotosService.importAlbumImages(property.googlePhotosUrl)
+        if (imported.images && imported.images.length > 0) {
+          // Merge dynamic album photos with any manually saved gallery URLs (without duplicates)
+          galleryImageUrls = Array.from(new Set([...imported.images, ...galleryImageUrls]))
+        }
+      } catch (err) {
+        console.warn(`[getPublicAvailability] Failed to fetch dynamic Google Photos album for ${property.id}:`, err)
+      }
+    }
+
     const events = await eventRepository.list(property.id)
     const sanitized = events.map(sanitizePublicEvent).filter(Boolean) as {
       start: string
@@ -212,6 +228,7 @@ export class EventService {
       publicSlug: property.publicSlug,
       instagramUrl: property.instagramUrl ?? null,
       googlePhotosUrl: property.googlePhotosUrl ?? null,
+      coverImageUrl: property.coverImageUrl ?? null,
       description: property.description ?? null,
       locationLabel: property.locationLabel ?? null,
       googleMapsPinUrl: property.googleMapsPinUrl ?? null,
@@ -220,7 +237,7 @@ export class EventService {
       googleMapsLng: property.googleMapsLng ?? null,
       showGoogleReviews: property.showGoogleReviews === true,
       googleMapsReviewsUrl: property.googleMapsReviewsUrl ?? null,
-      galleryImageUrls: property.galleryImageUrls ?? [],
+      galleryImageUrls,
       instagramPostUrls: property.instagramPostUrls ?? [],
       showQuoterPublic: property.showQuoterPublic === true,
       quoterMonthlyRatesUSD: property.quoterMonthlyRatesUSD ?? {},

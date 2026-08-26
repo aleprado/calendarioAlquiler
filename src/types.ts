@@ -68,6 +68,7 @@ export interface PropertyDTO {
   updatedAt: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  coverImageUrl: string | null
   description: string | null
   locationLabel: string | null
   googleMapsPinUrl: string | null
@@ -90,6 +91,7 @@ export interface NewPropertyPayload {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -112,6 +114,7 @@ export interface UpdatePropertyPayload {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -159,6 +162,7 @@ export interface PublicAvailabilityDTO {
   publicSlug: string
   instagramUrl: string | null
   googlePhotosUrl: string | null
+  coverImageUrl: string | null
   description: string | null
   locationLabel: string | null
   googleMapsPinUrl: string | null

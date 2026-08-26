@@ -125,7 +125,12 @@ export const PublicPromoPage = () => {
     [data?.galleryImageUrls, hiddenImageUrls],
   )
 
-  const coverImage = images[0] ?? null
+  const coverImage = useMemo(() => {
+    if (data?.coverImageUrl && !hiddenImageUrls.includes(data.coverImageUrl)) {
+      return data.coverImageUrl
+    }
+    return images[0] ?? null
+  }, [data?.coverImageUrl, hiddenImageUrls, images])
   const instagramUsername = getInstagramUsername(data?.instagramUrl ?? null)
 
   const totalGalleryPages = Math.ceil(images.length / GALLERY_PAGE_SIZE)
