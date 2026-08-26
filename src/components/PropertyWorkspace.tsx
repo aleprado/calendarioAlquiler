@@ -7,6 +7,7 @@ import { EventDetailsModal } from './EventDetailsModal'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
 import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEvent, updateEventStatus } from '../api/events'
+import { CotizadorWidget } from './CotizadorWidget'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -245,9 +246,10 @@ const getEventStyle = (event: ViewEvent) => {
 
 interface PropertyWorkspaceProps {
   property: PropertyDTO
+  onOpenSettings?: () => void
 }
 
-export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
+export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspaceProps) => {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -514,6 +516,15 @@ export const PropertyWorkspace = ({ property }: PropertyWorkspaceProps) => {
           </button>
         </div>
       )}
+
+      <CotizadorWidget
+        mode="private"
+        monthlyRatesUSD={property.quoterMonthlyRatesUSD}
+        adminCommissionPercent={property.quoterAdminCommissionPercent}
+        cleaningFeeUSD={property.quoterCleaningFeeUSD}
+        customExchangeRates={property.quoterCustomExchangeRates}
+        onOpenSettings={onOpenSettings}
+      />
 
       <div className="calendar-card">
         <div className="calendar-card__toolbar">

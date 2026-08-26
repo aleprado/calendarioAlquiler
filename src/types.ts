@@ -78,6 +78,11 @@ export interface PropertyDTO {
   googleMapsReviewsUrl: string | null
   galleryImageUrls: string[]
   instagramPostUrls: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
 }
 
 export interface NewPropertyPayload {
@@ -95,6 +100,11 @@ export interface NewPropertyPayload {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
 }
 
 export interface UpdatePropertyPayload {
@@ -112,6 +122,11 @@ export interface UpdatePropertyPayload {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   regenerateSlug?: boolean
 }
 
@@ -154,6 +169,9 @@ export interface PublicAvailabilityDTO {
   googleMapsReviewsUrl: string | null
   galleryImageUrls: string[]
   instagramPostUrls: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   events: PublicEventDTO[]
 }
 

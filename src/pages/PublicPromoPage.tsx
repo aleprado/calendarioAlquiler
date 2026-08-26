@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchPublicAvailability } from '../api/public'
 import type { PublicAvailabilityDTO } from '../types'
+import { CotizadorWidget } from '../components/CotizadorWidget'
 
 const MAPS_EMBED_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY as string | undefined)?.trim() ?? ''
 
 const buildSearchMapUrl = (query: string) =>
   `https://www.google.com/maps?hl=es&q=${encodeURIComponent(query)}&z=16&output=embed`
-
-const normalizeHost = (hostname: string) => hostname.toLowerCase().replace(/^www\./, '')
 
 const isLikelyUrl = (value: string) => {
   try {
@@ -18,32 +17,6 @@ const isLikelyUrl = (value: string) => {
     return false
   }
 }
-
-const isInstagramUrl = (value: string) => {
-  try {
-    const parsed = new URL(value)
-    const host = normalizeHost(parsed.hostname)
-    return host === 'instagram.com' || host.endsWith('.instagram.com')
-  } catch {
-    return false
-  }
-}
-
-const buildInstagramEmbedPermalink = (value: string) => {
-  if (!isInstagramUrl(value)) return null
-  try {
-    const parsed = new URL(value)
-    const segments = parsed.pathname.split('/').filter(Boolean)
-    if (segments.length < 2) return null
-    const [contentType, contentId] = segments
-    if (!contentId || !['p', 'reel', 'tv'].includes(contentType)) return null
-    return `https://www.instagram.com/${contentType}/${contentId}/`
-  } catch {
-    return null
-  }
-}
-
-const buildInstagramEmbedUrl = (permalink: string) => `${permalink}embed/captioned/`
 
 const extractMapQueryFromPinUrl = (value: string) => {
   if (!isLikelyUrl(value)) return null
@@ -94,19 +67,27 @@ const getInstagramUsername = (instagramUrl: string | null) => {
   if (!instagramUrl) return null
   try {
     const url = new URL(instagramUrl)
-    const firstSegment = url.pathname.split('/').filter(Boolean)[0]
-    return firstSegment || null
+    const segments = url.pathname.split('/').filter(Boolean)
+    if (segments.length === 0) return null
+    // Avoid returning 'p', 'reel', 'stories', etc. if full url was pasted
+    if (['p', 'reel', 'stories', 'tv'].includes(segments[0])) {
+      return null
+    }
+    return segments[0]
   } catch {
     return null
   }
 }
+
+const GALLERY_PAGE_SIZE = 8
 
 export const PublicPromoPage = () => {
   const { publicSlug = '' } = useParams()
   const [data, setData] = useState<PublicAvailabilityDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0)
+  const [galleryPage, setGalleryPage] = useState(0)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [hiddenImageUrls, setHiddenImageUrls] = useState<string[]>([])
 
   useEffect(() => {
@@ -134,7 +115,7 @@ export const PublicPromoPage = () => {
   }, [publicSlug])
 
   useEffect(() => {
-    setActiveGalleryIndex(0)
+    setGalleryPage(0)
     setHiddenImageUrls([])
   }, [data?.galleryImageUrls])
 
@@ -143,39 +124,15 @@ export const PublicPromoPage = () => {
     () => (data?.galleryImageUrls ?? []).filter((url) => !hiddenImageUrls.includes(url)),
     [data?.galleryImageUrls, hiddenImageUrls],
   )
-  const instagramEmbedPermalinks = useMemo(
-    () =>
-      (data?.instagramPostUrls ?? [])
-        .map((url) => buildInstagramEmbedPermalink(url))
-        .filter((url): url is string => Boolean(url))
-        .slice(0, 3),
-    [data?.instagramPostUrls],
-  )
+
   const coverImage = images[0] ?? null
-  const activeGalleryImage = images[activeGalleryIndex] ?? null
   const instagramUsername = getInstagramUsername(data?.instagramUrl ?? null)
 
-  useEffect(() => {
-    if (!data || images.length < 2) return
-    const timer = window.setInterval(() => {
-      setActiveGalleryIndex((current) => (current + 1) % images.length)
-    }, 5500)
-
-    return () => window.clearInterval(timer)
-  }, [data, images.length])
-
-  useEffect(() => {
-    if (images.length === 0) {
-      if (activeGalleryIndex !== 0) {
-        setActiveGalleryIndex(0)
-      }
-      return
-    }
-
-    if (activeGalleryIndex >= images.length) {
-      setActiveGalleryIndex(0)
-    }
-  }, [activeGalleryIndex, images.length])
+  const totalGalleryPages = Math.ceil(images.length / GALLERY_PAGE_SIZE)
+  const paginatedImages = useMemo(() => {
+    const start = galleryPage * GALLERY_PAGE_SIZE
+    return images.slice(start, start + GALLERY_PAGE_SIZE)
+  }, [images, galleryPage])
 
   const markImageAsHidden = (url: string) => {
     setHiddenImageUrls((previous) => (previous.includes(url) ? previous : [...previous, url]))
@@ -229,75 +186,79 @@ export const PublicPromoPage = () => {
                   <p>{data.locationLabel ?? 'Configura la ubicación desde gestión para mostrar el pin exacto.'}</p>
                 </a>
                 <a className="promo-meta-card promo-meta-card--link" href="#seccion-galeria">
-                  <h3>Google Fotos</h3>
-                  <p>{data.googlePhotosUrl ? 'Album conectado para compartir fotos.' : 'No hay álbum conectado aún.'}</p>
+                  <h3>Galería de fotos</h3>
+                  <p>{images.length > 0 ? `${images.length} fotos disponibles` : 'No hay fotos aún.'}</p>
                 </a>
                 <a className="promo-meta-card promo-meta-card--link" href="#seccion-instagram">
                   <h3>Instagram</h3>
-                  <p>{instagramUsername ? `Perfil @${instagramUsername}` : 'No hay perfil configurado aún.'}</p>
+                  <p>{instagramUsername ? `@${instagramUsername}` : 'Perfil de Instagram'}</p>
                 </a>
               </div>
             </div>
           </header>
 
+          {data.showQuoterPublic && (
+            <section id="seccion-cotizador" className="promo-section">
+              <CotizadorWidget
+                mode="public"
+                monthlyRatesUSD={data.quoterMonthlyRatesUSD}
+                customExchangeRates={data.quoterCustomExchangeRates}
+              />
+            </section>
+          )}
+
           <section id="seccion-galeria" className="promo-section">
             <div className="promo-section__header">
-              <h2>Galeria</h2>
+              <h2>Galeria de fotos</h2>
               {images.length > 0 && (
                 <p>
-                  {activeGalleryIndex + 1} / {images.length}
+                  Mostrando {galleryPage * GALLERY_PAGE_SIZE + 1} - {Math.min((galleryPage + 1) * GALLERY_PAGE_SIZE, images.length)} de {images.length} fotos
                 </p>
               )}
             </div>
             {images.length > 0 ? (
-              <div className="promo-carousel">
-                <div className="promo-carousel__main">
-                  <img
-                    src={activeGalleryImage ?? ''}
-                    alt={`Foto ${activeGalleryIndex + 1} de ${data.propertyName}`}
-                    onError={() => {
-                      if (activeGalleryImage) {
-                        markImageAsHidden(activeGalleryImage)
-                      }
-                    }}
-                  />
-                  {images.length > 1 && (
-                    <div className="promo-carousel__controls">
+              <div className="gallery-paginated">
+                <div className="gallery-grid">
+                  {paginatedImages.map((url, localIdx) => {
+                    const globalIdx = galleryPage * GALLERY_PAGE_SIZE + localIdx
+                    return (
                       <button
+                        key={`${url}-${globalIdx}`}
                         type="button"
-                        className="secondary"
-                        onClick={() => setActiveGalleryIndex((current) => (current - 1 + images.length) % images.length)}
-                      >
-                        Anterior
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => setActiveGalleryIndex((current) => (current + 1) % images.length)}
-                      >
-                        Siguiente
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {images.length > 1 && (
-                  <div className="promo-carousel__thumbs">
-                    {images.map((url, index) => (
-                      <button
-                        key={`${url}-${index}`}
-                        type="button"
-                        className={`promo-carousel__thumb${index === activeGalleryIndex ? ' promo-carousel__thumb--active' : ''}`}
-                        onClick={() => setActiveGalleryIndex(index)}
+                        className="gallery-grid__item"
+                        onClick={() => setLightboxIndex(globalIdx)}
                       >
                         <img
                           src={url}
-                          alt={`Miniatura ${index + 1}`}
-                          onError={() => {
-                            markImageAsHidden(url)
-                          }}
+                          alt={`Foto ${globalIdx + 1} de ${data.propertyName}`}
+                          onError={() => markImageAsHidden(url)}
                         />
                       </button>
-                    ))}
+                    )
+                  })}
+                </div>
+
+                {totalGalleryPages > 1 && (
+                  <div className="gallery-pagination">
+                    <button
+                      type="button"
+                      className="secondary btn-sm"
+                      disabled={galleryPage === 0}
+                      onClick={() => setGalleryPage((p) => Math.max(0, p - 1))}
+                    >
+                      &laquo; Anterior
+                    </button>
+                    <span className="gallery-pagination__info">
+                      Página {galleryPage + 1} de {totalGalleryPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary btn-sm"
+                      disabled={galleryPage >= totalGalleryPages - 1}
+                      onClick={() => setGalleryPage((p) => Math.min(totalGalleryPages - 1, p + 1))}
+                    >
+                      Siguiente &raquo;
+                    </button>
                   </div>
                 )}
               </div>
@@ -317,6 +278,44 @@ export const PublicPromoPage = () => {
               </div>
             )}
           </section>
+
+          {/* Lightbox / Preview Modal for Gallery */}
+          {lightboxIndex !== null && images[lightboxIndex] && (
+            <div className="modal-backdrop" role="presentation" onClick={() => setLightboxIndex(null)}>
+              <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="lightbox-close"
+                  onClick={() => setLightboxIndex(null)}
+                  aria-label="Cerrar vista"
+                >
+                  &times;
+                </button>
+                <img
+                  src={images[lightboxIndex]}
+                  alt={`Foto ${lightboxIndex + 1}`}
+                  className="lightbox-image"
+                />
+                <div className="lightbox-nav">
+                  <button
+                    type="button"
+                    className="secondary btn-sm"
+                    onClick={() => setLightboxIndex((idx) => (idx !== null ? (idx - 1 + images.length) % images.length : 0))}
+                  >
+                    Anterior
+                  </button>
+                  <span>{lightboxIndex + 1} / {images.length}</span>
+                  <button
+                    type="button"
+                    className="secondary btn-sm"
+                    onClick={() => setLightboxIndex((idx) => (idx !== null ? (idx + 1) % images.length : 0))}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <section id="seccion-ubicacion" className="promo-section">
             <div className="promo-section__header">
@@ -353,32 +352,23 @@ export const PublicPromoPage = () => {
             <div className="promo-section__header">
               <h2>Instagram</h2>
             </div>
-            {instagramEmbedPermalinks.length > 0 ? (
-              <div className="instagram-preview-grid">
-                {instagramEmbedPermalinks.map((permalink, index) => (
-                  <article key={`${permalink}-${index}`} className="instagram-preview-card">
-                    <div className="instagram-preview-card__media">
-                      <iframe
-                        title={`Publicación de Instagram ${index + 1}`}
-                        src={buildInstagramEmbedUrl(permalink)}
-                        loading="lazy"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                      />
-                    </div>
-                    <a className="promo-location-link promo-location-link--soft" href={permalink} target="_blank" rel="noopener noreferrer">
-                      Ver en Instagram
-                      <span aria-hidden="true">↗</span>
-                    </a>
-                  </article>
-                ))}
-              </div>
-            ) : data.instagramUrl ? (
-              <div className="promo-empty">
-                <p>
-                  Carga links directos de posts o reels en gestión para mostrarlos embebidos aquí.
-                </p>
-                <a href={data.instagramUrl} target="_blank" rel="noopener noreferrer">
-                  Abrir perfil de Instagram
+            {data.instagramUrl ? (
+              <div className="instagram-account-card">
+                <div className="instagram-account-card__icon" aria-hidden="true">
+                  <img src="/insta-logo.png" alt="Instagram" onError={(e) => { (e.target as HTMLElement).style.display = 'none' }} />
+                </div>
+                <div className="instagram-account-card__info">
+                  <h3>{instagramUsername ? `@${instagramUsername}` : 'Visita nuestro Instagram'}</h3>
+                  <p>Mira nuestras fotos, novedades y actualizaciones en nuestra cuenta oficial de Instagram.</p>
+                </div>
+                <a
+                  className="primary instagram-account-card__btn"
+                  href={data.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ver en Instagram {instagramUsername ? `@${instagramUsername}` : ''}
+                  <span aria-hidden="true">↗</span>
                 </a>
               </div>
             ) : (

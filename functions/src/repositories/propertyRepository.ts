@@ -21,6 +21,18 @@ const normalizeStringArray = (value: unknown): string[] => {
 
 const normalizeOptionalBoolean = (value: unknown): boolean => value === true
 
+const normalizeNumberMap = (value: unknown): Record<string, number> => {
+  if (typeof value !== 'object' || value === null) return {}
+  const result: Record<string, number> = {}
+  for (const [k, v] of Object.entries(value)) {
+    const num = Number(v)
+    if (!Number.isNaN(num) && num >= 0) {
+      result[k] = num
+    }
+  }
+  return result
+}
+
 export interface PropertyRecord {
   id: string
   ownerId: string
@@ -43,6 +55,11 @@ export interface PropertyRecord {
   googleMapsReviewsUrl: string | null
   galleryImageUrls: string[]
   instagramPostUrls: string[]
+  showQuoterPublic: boolean
+  quoterMonthlyRatesUSD: Record<string, number>
+  quoterAdminCommissionPercent: number
+  quoterCleaningFeeUSD: number
+  quoterCustomExchangeRates: { usdToArs?: number; usdToBrl?: number } | null
 }
 
 export interface CreatePropertyInput {
@@ -61,6 +78,11 @@ export interface CreatePropertyInput {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
 }
 
 export interface UpdatePropertyInput {
@@ -78,6 +100,11 @@ export interface UpdatePropertyInput {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   regenerateSlug?: boolean
 }
 
@@ -91,6 +118,7 @@ export class PropertyRepository {
     const memberIds = Array.isArray(data.memberIds)
       ? data.memberIds.filter((value): value is string => typeof value === 'string')
       : []
+    const customRates = (data as Record<string, unknown>).quoterCustomExchangeRates
     return {
       id: doc.id,
       ownerId: data.ownerId ?? '',
@@ -113,6 +141,11 @@ export class PropertyRepository {
       googleMapsReviewsUrl: normalizeOptionalString((data as Record<string, unknown>).googleMapsReviewsUrl),
       galleryImageUrls: normalizeStringArray((data as Record<string, unknown>).galleryImageUrls),
       instagramPostUrls: normalizeStringArray((data as Record<string, unknown>).instagramPostUrls),
+      showQuoterPublic: normalizeOptionalBoolean((data as Record<string, unknown>).showQuoterPublic),
+      quoterMonthlyRatesUSD: normalizeNumberMap((data as Record<string, unknown>).quoterMonthlyRatesUSD),
+      quoterAdminCommissionPercent: normalizeOptionalNumber((data as Record<string, unknown>).quoterAdminCommissionPercent) ?? 0,
+      quoterCleaningFeeUSD: normalizeOptionalNumber((data as Record<string, unknown>).quoterCleaningFeeUSD) ?? 0,
+      quoterCustomExchangeRates: customRates ? (normalizeNumberMap(customRates) as { usdToArs?: number; usdToBrl?: number }) : null,
     }
   }
 
@@ -210,6 +243,11 @@ export class PropertyRepository {
       googleMapsReviewsUrl: normalizeOptionalString(input.googleMapsReviewsUrl),
       galleryImageUrls: normalizeStringArray(input.galleryImageUrls),
       instagramPostUrls: normalizeStringArray(input.instagramPostUrls),
+      showQuoterPublic: input.showQuoterPublic === true,
+      quoterMonthlyRatesUSD: input.quoterMonthlyRatesUSD ? normalizeNumberMap(input.quoterMonthlyRatesUSD) : {},
+      quoterAdminCommissionPercent: typeof input.quoterAdminCommissionPercent === 'number' ? Math.max(0, input.quoterAdminCommissionPercent) : 0,
+      quoterCleaningFeeUSD: typeof input.quoterCleaningFeeUSD === 'number' ? Math.max(0, input.quoterCleaningFeeUSD) : 0,
+      quoterCustomExchangeRates: input.quoterCustomExchangeRates ? (normalizeNumberMap(input.quoterCustomExchangeRates) as { usdToArs?: number; usdToBrl?: number }) : null,
     }
 
     await docRef.set(payload)
@@ -250,6 +288,11 @@ export class PropertyRepository {
         : {}),
       ...(updates.galleryImageUrls !== undefined ? { galleryImageUrls: normalizeStringArray(updates.galleryImageUrls) } : {}),
       ...(updates.instagramPostUrls !== undefined ? { instagramPostUrls: normalizeStringArray(updates.instagramPostUrls) } : {}),
+      ...(updates.showQuoterPublic !== undefined ? { showQuoterPublic: updates.showQuoterPublic === true } : {}),
+      ...(updates.quoterMonthlyRatesUSD !== undefined ? { quoterMonthlyRatesUSD: normalizeNumberMap(updates.quoterMonthlyRatesUSD) } : {}),
+      ...(updates.quoterAdminCommissionPercent !== undefined ? { quoterAdminCommissionPercent: Math.max(0, updates.quoterAdminCommissionPercent) } : {}),
+      ...(updates.quoterCleaningFeeUSD !== undefined ? { quoterCleaningFeeUSD: Math.max(0, updates.quoterCleaningFeeUSD) } : {}),
+      ...(updates.quoterCustomExchangeRates !== undefined ? { quoterCustomExchangeRates: updates.quoterCustomExchangeRates ? (normalizeNumberMap(updates.quoterCustomExchangeRates) as { usdToArs?: number; usdToBrl?: number }) : null } : {}),
       updatedAt: now,
     }
 

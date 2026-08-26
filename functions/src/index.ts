@@ -45,6 +45,12 @@ const optionalLngSchema = z.union([z.number().min(-180).max(180), z.literal(null
 const imageUrlListSchema = z.array(z.string().trim().url('Cada imagen debe ser una URL válida')).max(24)
 const instagramPostListSchema = z.array(z.string().trim().url('Cada post de Instagram debe ser una URL válida')).max(6)
 
+const monthlyRatesSchema = z.record(z.string(), z.number().min(0))
+const exchangeRatesSchema = z.object({
+  usdToArs: z.number().positive().optional(),
+  usdToBrl: z.number().positive().optional(),
+}).nullable()
+
 const propertyPayloadSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida'),
@@ -60,6 +66,11 @@ const propertyPayloadSchema = z.object({
   googleMapsReviewsUrl: socialLinkSchema.optional(),
   galleryImageUrls: imageUrlListSchema.optional(),
   instagramPostUrls: instagramPostListSchema.optional(),
+  showQuoterPublic: z.boolean().optional(),
+  quoterMonthlyRatesUSD: monthlyRatesSchema.optional(),
+  quoterAdminCommissionPercent: z.number().min(0).optional(),
+  quoterCleaningFeeUSD: z.number().min(0).optional(),
+  quoterCustomExchangeRates: exchangeRatesSchema.optional(),
 })
 
 const propertyUpdateSchema = z.object({
@@ -77,6 +88,11 @@ const propertyUpdateSchema = z.object({
   googleMapsReviewsUrl: socialLinkSchema.optional(),
   galleryImageUrls: imageUrlListSchema.optional(),
   instagramPostUrls: instagramPostListSchema.optional(),
+  showQuoterPublic: z.boolean().optional(),
+  quoterMonthlyRatesUSD: monthlyRatesSchema.optional(),
+  quoterAdminCommissionPercent: z.number().min(0).optional(),
+  quoterCleaningFeeUSD: z.number().min(0).optional(),
+  quoterCustomExchangeRates: exchangeRatesSchema.optional(),
   regenerateSlug: z.boolean().optional(),
 })
 

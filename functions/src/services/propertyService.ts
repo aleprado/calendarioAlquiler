@@ -18,6 +18,11 @@ export interface CreatePropertyPayload {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
 }
 
 export interface UpdatePropertyPayload {
@@ -35,6 +40,11 @@ export interface UpdatePropertyPayload {
   googleMapsReviewsUrl?: string | null
   galleryImageUrls?: string[]
   instagramPostUrls?: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   regenerateSlug?: boolean
 }
 
@@ -127,6 +137,11 @@ export class PropertyService {
       googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl) ?? null,
       galleryImageUrls: sanitizeStringList(payload.galleryImageUrls) ?? [],
       instagramPostUrls: sanitizeStringList(payload.instagramPostUrls) ?? [],
+      showQuoterPublic: payload.showQuoterPublic,
+      quoterMonthlyRatesUSD: payload.quoterMonthlyRatesUSD,
+      quoterAdminCommissionPercent: payload.quoterAdminCommissionPercent,
+      quoterCleaningFeeUSD: payload.quoterCleaningFeeUSD,
+      quoterCustomExchangeRates: payload.quoterCustomExchangeRates,
     })
   }
 
@@ -177,6 +192,11 @@ export class PropertyService {
       googleMapsReviewsUrl: sanitizeOptionalUrl(payload.googleMapsReviewsUrl),
       galleryImageUrls: sanitizeStringList(payload.galleryImageUrls),
       instagramPostUrls: sanitizeStringList(payload.instagramPostUrls),
+      showQuoterPublic: payload.showQuoterPublic,
+      quoterMonthlyRatesUSD: payload.quoterMonthlyRatesUSD,
+      quoterAdminCommissionPercent: payload.quoterAdminCommissionPercent,
+      quoterCleaningFeeUSD: payload.quoterCleaningFeeUSD,
+      quoterCustomExchangeRates: payload.quoterCustomExchangeRates,
       regenerateSlug: payload.regenerateSlug,
     })
   }

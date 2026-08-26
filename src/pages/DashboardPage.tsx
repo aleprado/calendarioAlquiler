@@ -84,6 +84,25 @@ const INITIAL_FORM = {
   googleMapsReviewsUrl: '',
   galleryImageUrls: '',
   instagramPostUrls: '',
+  showQuoterPublic: true,
+  quoterAdminCommissionPercent: '0',
+  quoterCleaningFeeUSD: '0',
+  quoterMonthlyRatesUSD: {
+    '1': '1500',
+    '2': '1500',
+    '3': '1200',
+    '4': '1000',
+    '5': '1000',
+    '6': '1000',
+    '7': '1200',
+    '8': '1200',
+    '9': '1000',
+    '10': '1000',
+    '11': '1200',
+    '12': '1500',
+  } as Record<string, string>,
+  customUsdToArs: '',
+  customUsdToBrl: '',
 }
 
 export const DashboardPage = () => {
@@ -143,6 +162,13 @@ export const DashboardPage = () => {
 
   useEffect(() => {
     if (selectedProperty) {
+      const rates = selectedProperty.quoterMonthlyRatesUSD ?? {}
+      const monthMap: Record<string, string> = {}
+      for (let m = 1; m <= 12; m++) {
+        const k = String(m)
+        monthMap[k] = rates[k] !== undefined ? String(rates[k]) : INITIAL_FORM.quoterMonthlyRatesUSD[k] ?? '1000'
+      }
+
       setEditForm({
         name: selectedProperty.name,
         airbnbIcalUrl: selectedProperty.airbnbIcalUrl,
@@ -158,6 +184,12 @@ export const DashboardPage = () => {
         googleMapsReviewsUrl: selectedProperty.googleMapsReviewsUrl ?? '',
         galleryImageUrls: selectedProperty.galleryImageUrls.join('\n'),
         instagramPostUrls: selectedProperty.instagramPostUrls.join('\n'),
+        showQuoterPublic: selectedProperty.showQuoterPublic !== false,
+        quoterAdminCommissionPercent: String(selectedProperty.quoterAdminCommissionPercent ?? 0),
+        quoterCleaningFeeUSD: String(selectedProperty.quoterCleaningFeeUSD ?? 0),
+        quoterMonthlyRatesUSD: monthMap,
+        customUsdToArs: selectedProperty.quoterCustomExchangeRates?.usdToArs ? String(selectedProperty.quoterCustomExchangeRates.usdToArs) : '',
+        customUsdToBrl: selectedProperty.quoterCustomExchangeRates?.usdToBrl ? String(selectedProperty.quoterCustomExchangeRates.usdToBrl) : '',
       })
       setEditError(null)
       setMapResolveFeedback(null)
@@ -309,6 +341,19 @@ export const DashboardPage = () => {
         }
       }
 
+      const parsedMonthlyRates: Record<string, number> = {}
+      for (let m = 1; m <= 12; m++) {
+        const k = String(m)
+        const val = Number(editForm.quoterMonthlyRatesUSD[k] ?? 0)
+        parsedMonthlyRates[k] = Number.isFinite(val) && val >= 0 ? val : 0
+      }
+
+      const customArs = editForm.customUsdToArs ? Number(editForm.customUsdToArs) : undefined
+      const customBrl = editForm.customUsdToBrl ? Number(editForm.customUsdToBrl) : undefined
+      const customRates = (customArs && customArs > 0) || (customBrl && customBrl > 0)
+        ? { usdToArs: customArs, usdToBrl: customBrl }
+        : null
+
       const updated = await updateProperty(selectedProperty.id, {
         name: editForm.name.trim(),
         airbnbIcalUrl: editForm.airbnbIcalUrl.trim(),
@@ -324,6 +369,11 @@ export const DashboardPage = () => {
         googleMapsReviewsUrl: trimmedReviewsUrl ? trimmedReviewsUrl : null,
         galleryImageUrls: parseUrlList(editForm.galleryImageUrls),
         instagramPostUrls: parseUrlList(editForm.instagramPostUrls),
+        showQuoterPublic: editForm.showQuoterPublic,
+        quoterAdminCommissionPercent: Math.max(0, Number(editForm.quoterAdminCommissionPercent) || 0),
+        quoterCleaningFeeUSD: Math.max(0, Number(editForm.quoterCleaningFeeUSD) || 0),
+        quoterMonthlyRatesUSD: parsedMonthlyRates,
+        quoterCustomExchangeRates: customRates,
       })
       setProperties((prev) => prev.map((property) => (property.id === updated.id ? updated : property)))
       setIsEditModalOpen(false)
@@ -589,7 +639,9 @@ export const DashboardPage = () => {
             </button>
           </section>
         ) : (
-          selectedProperty ? <PropertyWorkspace property={selectedProperty} /> : null
+          selectedProperty ? (
+            <PropertyWorkspace property={selectedProperty} onOpenSettings={() => setIsEditModalOpen(true)} />
+          ) : null
         )}
       </main>
 
@@ -785,6 +837,115 @@ export const DashboardPage = () => {
               <p className="field-hint">
                 Usa publicaciones públicas de Instagram (`/p/` o `/reel/`). Historias y feed automático no están soportados en este modo.
               </p>
+              <h3 className="settings-section-title">Configuración del Cotizador de Tarifas</h3>
+              <label htmlFor="edit-quoter-public-toggle" className="checkbox-label">
+                <input
+                  id="edit-quoter-public-toggle"
+                  type="checkbox"
+                  checked={editForm.showQuoterPublic}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, showQuoterPublic: event.target.checked }))}
+                />
+                Mostrar Cotizador de tarifas en la página pública para huéspedes
+              </label>
+
+              <div className="coordinate-row">
+                <div>
+                  <label htmlFor="edit-commission">Comisión de administrador (%)</label>
+                  <input
+                    id="edit-commission"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={editForm.quoterAdminCommissionPercent}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, quoterAdminCommissionPercent: e.target.value }))}
+                    placeholder="10"
+                  />
+                  <span className="field-hint">Solo visible en gestión privada</span>
+                </div>
+                <div>
+                  <label htmlFor="edit-cleaning">Monto de limpieza (USD)</label>
+                  <input
+                    id="edit-cleaning"
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={editForm.quoterCleaningFeeUSD}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, quoterCleaningFeeUSD: e.target.value }))}
+                    placeholder="50"
+                  />
+                  <span className="field-hint">Solo visible en gestión privada</span>
+                </div>
+              </div>
+
+              <label>Tarifas mensuales por mes (USD/mes):</label>
+              <div className="monthly-rates-grid">
+                {[
+                  { key: '1', label: 'Enero' },
+                  { key: '2', label: 'Febrero' },
+                  { key: '3', label: 'Marzo' },
+                  { key: '4', label: 'Abril' },
+                  { key: '5', label: 'Mayo' },
+                  { key: '6', label: 'Junio' },
+                  { key: '7', label: 'Julio' },
+                  { key: '8', label: 'Agosto' },
+                  { key: '9', label: 'Septiembre' },
+                  { key: '10', label: 'Octubre' },
+                  { key: '11', label: 'Noviembre' },
+                  { key: '12', label: 'Diciembre' },
+                ].map((month) => (
+                  <div key={month.key} className="month-rate-input">
+                    <label htmlFor={`rate-month-${month.key}`}>{month.label}</label>
+                    <input
+                      id={`rate-month-${month.key}`}
+                      type="number"
+                      min="0"
+                      step="50"
+                      value={editForm.quoterMonthlyRatesUSD[month.key] ?? '1000'}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setEditForm((prev) => ({
+                          ...prev,
+                          quoterMonthlyRatesUSD: {
+                            ...prev.quoterMonthlyRatesUSD,
+                            [month.key]: val,
+                          },
+                        }))
+                      }}
+                      placeholder="1500"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <label>Cotizaciones de cambio personalizadas (Opcional):</label>
+              <div className="coordinate-row">
+                <div>
+                  <label htmlFor="custom-usd-ars">1 USD en ARS (Pesos)</label>
+                  <input
+                    id="custom-usd-ars"
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={editForm.customUsdToArs}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToArs: e.target.value }))}
+                    placeholder="Dejar vacío para cotización en vivo"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="custom-usd-brl">1 USD en BRL (Reales)</label>
+                  <input
+                    id="custom-usd-brl"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editForm.customUsdToBrl}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToBrl: e.target.value }))}
+                    placeholder="Dejar vacío para cotización en vivo"
+                  />
+                </div>
+              </div>
+
               <div className="edit-actions">
                 <button type="submit" className="primary" disabled={isSavingEdit}>
                   {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}

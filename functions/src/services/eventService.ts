@@ -67,6 +67,9 @@ export interface PublicAvailabilityPayload {
   googleMapsReviewsUrl: string | null
   galleryImageUrls: string[]
   instagramPostUrls: string[]
+  showQuoterPublic?: boolean
+  quoterMonthlyRatesUSD?: Record<string, number>
+  quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   events: { start: string; end: string; status: string }[]
 }
 
@@ -219,6 +222,9 @@ export class EventService {
       googleMapsReviewsUrl: property.googleMapsReviewsUrl ?? null,
       galleryImageUrls: property.galleryImageUrls ?? [],
       instagramPostUrls: property.instagramPostUrls ?? [],
+      showQuoterPublic: property.showQuoterPublic === true,
+      quoterMonthlyRatesUSD: property.quoterMonthlyRatesUSD ?? {},
+      quoterCustomExchangeRates: property.quoterCustomExchangeRates ?? null,
       events: sanitized,
     }
   }
