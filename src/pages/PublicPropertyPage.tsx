@@ -96,6 +96,7 @@ export const PublicPropertyPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingRange, setPendingRange] = useState<{ start: Date; end: Date; displayEnd: Date } | null>(null)
+  const [selectedDatesStr, setSelectedDatesStr] = useState<{ start: string; end: string } | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
@@ -170,10 +171,14 @@ export const PublicPropertyPage = () => {
       if (!data) return
       const range = normalizeSelectionRange(slot.start, slot.end)
 
+      const startStr = formatDateLocal(range.start)
+      const endStr = formatDateLocal(range.end)
+      setSelectedDatesStr({ start: startStr, end: endStr })
+
       const overlapsBlocked = events.some((event) => rangesOverlap(event, range.start, range.end) && event.status !== 'declined')
       if (overlapsBlocked) {
         setFeedback(null)
-        setCalendarHint('Las fechas seleccionadas ya estan ocupadas o pendientes de confirmacion.')
+        setCalendarHint('Las fechas seleccionadas ya están ocupadas o pendientes de confirmación.')
         return
       }
 
@@ -181,10 +186,37 @@ export const PublicPropertyPage = () => {
       setFeedback(null)
       setPendingRange(range)
       setModalError(null)
-      setIsModalOpen(true)
     },
     [data, events],
   )
+
+  const handleCotizadorDatesChange = (s: string, e: string) => {
+    setSelectedDatesStr({ start: s, end: e })
+    const sP = s.split('-').map(Number)
+    const eP = e.split('-').map(Number)
+    if (sP.length === 3 && eP.length === 3) {
+      const sDate = new Date(sP[0], sP[1] - 1, sP[2])
+      const eDate = new Date(eP[0], eP[1] - 1, eP[2])
+      if (!Number.isNaN(sDate.getTime()) && !Number.isNaN(eDate.getTime()) && eDate > sDate) {
+        const range = normalizeSelectionRange(sDate, eDate)
+        setPendingRange(range)
+      }
+    }
+  }
+
+  const handleOpenReservationModalFor = (s: string, e: string) => {
+    const sP = s.split('-').map(Number)
+    const eP = e.split('-').map(Number)
+    if (sP.length === 3 && eP.length === 3) {
+      const sDate = new Date(sP[0], sP[1] - 1, sP[2])
+      const eDate = new Date(eP[0], eP[1] - 1, eP[2])
+      if (!Number.isNaN(sDate.getTime()) && !Number.isNaN(eDate.getTime()) && eDate > sDate) {
+        const range = normalizeSelectionRange(sDate, eDate)
+        setPendingRange(range)
+        setIsModalOpen(true)
+      }
+    }
+  }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
@@ -265,19 +297,36 @@ export const PublicPropertyPage = () => {
             </div>
           )}
 
-          <section className="calendar-card">
-            <MultiMonthCalendar
-              events={events}
-              messages={calendarMessages}
-              onSelectSlot={handleSelectSlot}
-              onSelectEvent={() => undefined}
-              eventPropGetter={eventPropGetter}
-              renderMonthEvent={renderPublicMonthEvent}
-              dayPropGetter={dayPropGetter}
-              monthsToShow={1}
-              showNavigator
-            />
-          </section>
+          <div className={`public-calendar-main-grid${data.showQuoterPublic ? ' public-calendar-main-grid--with-quoter' : ''}`}>
+            <section className="calendar-card">
+              <MultiMonthCalendar
+                events={events}
+                messages={calendarMessages}
+                onSelectSlot={handleSelectSlot}
+                onSelectEvent={() => undefined}
+                eventPropGetter={eventPropGetter}
+                renderMonthEvent={renderPublicMonthEvent}
+                dayPropGetter={dayPropGetter}
+                monthsToShow={1}
+                showNavigator
+              />
+            </section>
+
+            {data.showQuoterPublic && (
+              <aside className="calendar-sidebar-quoter">
+                <CotizadorWidget
+                  mode="public"
+                  monthlyRatesUSD={data.quoterMonthlyRatesUSD}
+                  customExchangeRates={data.quoterCustomExchangeRates}
+                  blockedEvents={data.events}
+                  initialStartDate={selectedDatesStr?.start}
+                  initialEndDate={selectedDatesStr?.end}
+                  onDatesChange={(s, e) => handleCotizadorDatesChange(s, e)}
+                  onRequestReservation={(s, e) => handleOpenReservationModalFor(s, e)}
+                />
+              </aside>
+            )}
+          </div>
         </>
       ) : null}
 

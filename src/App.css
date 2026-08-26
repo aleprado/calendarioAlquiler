@@ -2521,11 +2521,44 @@ a.danger {
   line-height: 1.45;
 }
 
-.cotizador-nights-badge--available {
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+/* ==================== Public Calendar + Cotizador Sidebar Grid ==================== */
+.public-calendar-main-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
 }
+
+@media (min-width: 992px) {
+  .public-calendar-main-grid--with-quoter {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    align-items: start;
+    gap: 1.5rem;
+  }
+}
+
+.calendar-sidebar-quoter {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.cotizador-request-btn {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+  transition: all 0.2s ease;
+}
+
+.cotizador-request-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.35);
+}
+
 
 
 
