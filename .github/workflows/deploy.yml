@@ -125,7 +125,7 @@ jobs:
           echo "client_email: $(jq -r .client_email sa.json)"
           echo "project_id:  $(jq -r .project_id sa.json)"
 
-      - name: Deploy to Firebase Hosting
+      - name: Deploy to Firebase Hosting & Rules
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
@@ -134,4 +134,11 @@ jobs:
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+      - name: Deploy Firestore Rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          npx firebase-tools deploy --only firestore:rules --project "$PROJECT_ID"
           

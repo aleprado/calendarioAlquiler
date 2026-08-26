@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to property events so admin frontends receive instant real-time snapshot updates
+    match /properties/{propertyId}/events/{eventId} {
+      allow read: if true;
+    }
+    // Default rule: deny direct client writes (all writes must go through Cloud Functions API)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
