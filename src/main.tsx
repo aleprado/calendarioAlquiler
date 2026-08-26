@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import App from './App'
 import './index.css'
-import './App.css'
+import './styles/index.css'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
 createRoot(document.getElementById('root')!).render(

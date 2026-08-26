@@ -1,0 +1,206 @@
+
+.settings-section-title {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  border-bottom: 2px solid var(--color-surf);
+  padding-bottom: 0.4rem;
+  color: var(--color-primary-dark);
+}
+.settings-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.25rem;
+  scrollbar-width: none;
+}
+.settings-tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+.property-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.5rem 0 3rem 0;
+}
+.settings-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.settings-back-btn {
+  align-self: flex-start;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+}
+.settings-header-title h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.75rem;
+  color: var(--color-text);
+}
+.settings-header-title .subtitle {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+.settings-page-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  overflow: hidden;
+}
+.settings-tabs-bar {
+  display: flex;
+  gap: 0.5rem;
+  background: #f8fafc;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.settings-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+.settings-tab-item {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.2rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.settings-tab-item:hover {
+  background: #edf2f7;
+  color: var(--color-text);
+}
+.settings-tab-item--active {
+  background: #ffffff;
+  color: var(--color-primary-dark);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 118, 110, 0.2);
+}
+.settings-form-body {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+.settings-section-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+.settings-card-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 1.5rem;
+}
+.settings-card-box h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.15rem;
+  color: var(--color-primary-dark);
+  border-bottom: 2px solid var(--color-surf);
+  padding-bottom: 0.4rem;
+}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.settings-monthly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.month-card-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+.month-card-input label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.input-currency-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-currency-wrapper .currency-symbol {
+  position: absolute;
+  left: 0.65rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.input-currency-wrapper input {
+  padding-left: 1.6rem !important;
+  padding-right: 4.8rem !important;
+  font-weight: 700;
+  width: 100%;
+}
+.input-currency-wrapper .currency-unit {
+  position: absolute;
+  right: 0.65rem;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+.settings-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.85rem;
+}
+@media (max-width: 768px) {
+  .property-settings-page {
+    padding-bottom: 2rem;
+  }
+
+  .settings-form-body {
+    padding: 1.25rem 1rem;
+    gap: 1.5rem;
+  }
+
+  .settings-card-box {
+    padding: 1.25rem 1rem;
+  }
+  .form-grid-2,
+  .form-grid-3,
+  .settings-monthly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tabs-bar {
+    padding: 0.5rem 0.5rem;
+    gap: 0.25rem;
+  }
+  
+  .settings-tab-item {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+}
