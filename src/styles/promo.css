@@ -490,12 +490,18 @@
   justify-content: center;
   gap: 1rem;
   margin-top: 0.5rem;
+  flex-wrap: wrap; /* allow wrapping on extremely small screens */
+}
+
+.gallery-pagination button {
+  white-space: nowrap;
 }
 
 .gallery-pagination__info {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-muted);
+  white-space: nowrap;
 }
 
 .instagram-account-card {
