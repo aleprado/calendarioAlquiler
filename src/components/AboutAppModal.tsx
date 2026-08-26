@@ -15,9 +15,9 @@ const defaultContent = (
       un enlace público para recibir reservas sin exponer tu panel administrativo.
     </p>
     <p>
-      Escríbenos a <a href="mailto:hola@simplealquiler.net">hola@simplealquiler.net</a> o contáctanos por{' '}
+      Contáctanos por{' '}
       <a href="https://wa.me/5492364261382" target="_blank" rel="noopener noreferrer">
-        WhatsApp
+        WhatsApp (+54 236 426-1382)
       </a>
       .
     </p>

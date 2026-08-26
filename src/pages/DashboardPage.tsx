@@ -413,10 +413,9 @@ export const DashboardPage = () => {
               Gestionamos tus alojamientos turísticos desde un único panel: sincronización automática con Airbnb, bloqueos manuales y un enlace público para recibir reservas sin compartir tu panel privado.
             </p>
             <p>
-              ¿Te interesa implementar Simple Alquiler? Escríbenos a{' '}
-              <a href="mailto:hola@simplealquiler.net">hola@simplealquiler.net</a> o contáctanos por{' '}
-              <a href="https://wa.me/5491144444444" target="_blank" rel="noopener noreferrer">
-                WhatsApp
+              ¿Te interesa implementar Simple Alquiler? Contáctanos por{' '}
+              <a href="https://wa.me/5492364261382" target="_blank" rel="noopener noreferrer">
+                WhatsApp (+54 236 426-1382)
               </a>
               .
             </p>
