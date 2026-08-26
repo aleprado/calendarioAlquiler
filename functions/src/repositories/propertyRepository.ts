@@ -267,6 +267,8 @@ export class PropertyRepository {
       quoterCustomExchangeRates: input.quoterCustomExchangeRates ? (normalizeNumberMap(input.quoterCustomExchangeRates) as { usdToArs?: number; usdToBrl?: number }) : null,
       defaultCheckInTime: normalizeOptionalString(input.defaultCheckInTime) ?? '15:00',
       defaultCheckOutTime: normalizeOptionalString(input.defaultCheckOutTime) ?? '11:00',
+      publicViewsCount: 0,
+      publicQuotesCount: 0,
     }
 
     await docRef.set(payload)

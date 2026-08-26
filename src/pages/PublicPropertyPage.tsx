@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from '../components/MultiMonthCalendar'
 import { RequestFormModal } from '../components/RequestFormModal'
 import { CotizadorWidget } from '../components/CotizadorWidget'
-import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
+import { fetchPublicAvailability, submitPublicRequest, recordPublicView, recordPublicQuote } from '../api/public'
 import type { CalendarEvent, PublicAvailabilityDTO } from '../types'
 
 const formatDateLocal = (d: Date) => {
@@ -133,6 +133,11 @@ export const PublicPropertyPage = () => {
     try {
       const payload = await fetchPublicAvailability(publicSlug)
       setData(payload)
+      const sessionKey = `viewed_${publicSlug}`
+      if (!sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, '1')
+        void recordPublicView(publicSlug)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar la disponibilidad.')
     } finally {
@@ -349,6 +354,13 @@ export const PublicPropertyPage = () => {
                   initialStartDate={selectedDatesStr?.start}
                   initialEndDate={selectedDatesStr?.end}
                   onDatesChange={(s, e) => handleCotizadorDatesChange(s, e)}
+                  onQuoteCalculated={(s, e) => {
+                    const sessionKey = `quoted_${publicSlug}_${s}_${e}`
+                    if (!sessionStorage.getItem(sessionKey)) {
+                      sessionStorage.setItem(sessionKey, '1')
+                      void recordPublicQuote(publicSlug)
+                    }
+                  }}
                   onRequestReservation={(s, e) => handleOpenReservationModalFor(s, e)}
                 />
               </aside>

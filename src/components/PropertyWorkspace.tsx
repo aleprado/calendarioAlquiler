@@ -8,6 +8,7 @@ import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventCompon
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
 import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEvent, updateEventStatus } from '../api/events'
 import { CotizadorWidget } from './CotizadorWidget'
+import { MetricsView } from './MetricsView'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { getFirestoreDb } from '../lib/firebase'
 import { showReservationRequestNotification } from '../services/notificationService'
@@ -278,6 +279,7 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
   const [isProcessingEvent, setIsProcessingEvent] = useState(false)
   const [eventError, setEventError] = useState<string | null>(null)
   const [activeMonth, setActiveMonth] = useState(() => startOfMonth(new Date()))
+  const [activeTab, setActiveTab] = useState<'calendar' | 'metrics'>('calendar')
 
   const visibleEvents = useMemo(() => computeVisibleEvents(events), [events])
   const monthEvents = useMemo(() => {
@@ -571,69 +573,94 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
         </div>
       )}
 
-      <CotizadorWidget
-        mode="private"
-        monthlyRatesUSD={property.quoterMonthlyRatesUSD}
-        adminCommissionPercent={property.quoterAdminCommissionPercent}
-        cleaningFeeUSD={property.quoterCleaningFeeUSD}
-        customExchangeRates={property.quoterCustomExchangeRates}
-        checkInTime={property.defaultCheckInTime ?? '15:00'}
-        checkOutTime={property.defaultCheckOutTime ?? '11:00'}
-        onOpenSettings={onOpenSettings}
-      />
+      <nav className="workspace-tabs" aria-label="Secciones de la propiedad">
+        <button
+          type="button"
+          className={`workspace-tab${activeTab === 'calendar' ? ' workspace-tab--active' : ''}`}
+          onClick={() => setActiveTab('calendar')}
+        >
+          <span className="workspace-tab__icon">📅</span>
+          <span>Calendario y Cotizador</span>
+        </button>
+        <button
+          type="button"
+          className={`workspace-tab${activeTab === 'metrics' ? ' workspace-tab--active' : ''}`}
+          onClick={() => setActiveTab('metrics')}
+        >
+          <span className="workspace-tab__icon">📊</span>
+          <span>Métricas y Estadísticas</span>
+        </button>
+      </nav>
 
-      <div className="calendar-card">
-        <div className="calendar-card__toolbar">
-          <button type="button" className="primary" onClick={handleOpenNewEventModal}>
-            Nuevo evento
-          </button>
-          <p>Selecciona días o ajusta inicio/fin manualmente para crear eventos entre distintos meses.</p>
-        </div>
-        {isLoading ? (
-          <div className="loading">Cargando eventos...</div>
-        ) : (
-          <MultiMonthCalendar
-            events={visibleEvents}
-            messages={calendarMessages}
-            onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectCalendarEvent}
-            eventPropGetter={eventPropGetter}
-            renderMonthEvent={MonthEventRenderer}
-            monthsToShow={1}
-            showNavigator
-            anchorMonth={activeMonth}
-            onAnchorMonthChange={setActiveMonth}
+      {activeTab === 'metrics' ? (
+        <MetricsView property={property} events={events} />
+      ) : (
+        <>
+          <CotizadorWidget
+            mode="private"
+            monthlyRatesUSD={property.quoterMonthlyRatesUSD}
+            adminCommissionPercent={property.quoterAdminCommissionPercent}
+            cleaningFeeUSD={property.quoterCleaningFeeUSD}
+            customExchangeRates={property.quoterCustomExchangeRates}
+            checkInTime={property.defaultCheckInTime ?? '15:00'}
+            checkOutTime={property.defaultCheckOutTime ?? '11:00'}
+            onOpenSettings={onOpenSettings}
           />
-        )}
-      </div>
 
-      <section className="card month-events-card">
-        <div className="month-events-card__header">
-          <h3>Eventos de {getMonthLabel(activeMonth)}</h3>
-          <span>{monthEvents.length}</span>
-        </div>
-        {monthEvents.length === 0 ? (
-          <p className="subtitle">No hay eventos para este mes.</p>
-        ) : (
-          <ul className="month-events-list">
-            {monthEvents.map((event) => (
-              <li key={event.id}>
-                <button type="button" onClick={() => handleOpenEventDetails(event)} className="month-events-list__item">
-                  <span className="month-events-list__range">{getEventListRangeLabel(event)}</span>
-                  <strong className="month-events-list__title">
-                    {hasPendingCleaning(event) && <span className="cleaning-dot" aria-hidden="true" />}
-                    {event.title || 'Reserva'}
-                  </strong>
-                  <span className="month-events-list__meta">
-                    {eventSourceLabel(event)} · {eventStatusLabel(event)}
-                    {event.status === 'confirmed' ? ` · ${eventCleaningLabel(event)}` : ''}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <div className="calendar-card">
+            <div className="calendar-card__toolbar">
+              <button type="button" className="primary" onClick={handleOpenNewEventModal}>
+                Nuevo evento
+              </button>
+              <p>Selecciona días o ajusta inicio/fin manualmente para crear eventos entre distintos meses.</p>
+            </div>
+            {isLoading ? (
+              <div className="loading">Cargando eventos...</div>
+            ) : (
+              <MultiMonthCalendar
+                events={visibleEvents}
+                messages={calendarMessages}
+                onSelectSlot={handleSelectSlot}
+                onSelectEvent={handleSelectCalendarEvent}
+                eventPropGetter={eventPropGetter}
+                renderMonthEvent={MonthEventRenderer}
+                monthsToShow={1}
+                showNavigator
+                anchorMonth={activeMonth}
+                onAnchorMonthChange={setActiveMonth}
+              />
+            )}
+          </div>
+
+          <section className="card month-events-card">
+            <div className="month-events-card__header">
+              <h3>Eventos de {getMonthLabel(activeMonth)}</h3>
+              <span>{monthEvents.length}</span>
+            </div>
+            {monthEvents.length === 0 ? (
+              <p className="subtitle">No hay eventos para este mes.</p>
+            ) : (
+              <ul className="month-events-list">
+                {monthEvents.map((event) => (
+                  <li key={event.id}>
+                    <button type="button" onClick={() => handleOpenEventDetails(event)} className="month-events-list__item">
+                      <span className="month-events-list__range">{getEventListRangeLabel(event)}</span>
+                      <strong className="month-events-list__title">
+                        {hasPendingCleaning(event) && <span className="cleaning-dot" aria-hidden="true" />}
+                        {event.title || 'Reserva'}
+                      </strong>
+                      <span className="month-events-list__meta">
+                        {eventSourceLabel(event)} · {eventStatusLabel(event)}
+                        {event.status === 'confirmed' ? ` · ${eventCleaningLabel(event)}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
 
       <EventFormModal
         isOpen={isModalOpen && Boolean(pendingRange)}

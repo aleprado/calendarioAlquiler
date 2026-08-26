@@ -13,6 +13,7 @@ interface CotizadorWidgetProps {
   initialStartDate?: string
   initialEndDate?: string
   onDatesChange?: (startStr: string, endStr: string) => void
+  onQuoteCalculated?: (startStr: string, endStr: string) => void
   onRequestReservation?: (startStr: string, endStr: string) => void
   onOpenSettings?: () => void
 }
@@ -70,6 +71,7 @@ export const CotizadorWidget = ({
   initialStartDate,
   initialEndDate,
   onDatesChange,
+  onQuoteCalculated,
   onRequestReservation,
   onOpenSettings,
 }: CotizadorWidgetProps) => {
@@ -239,6 +241,12 @@ export const CotizadorWidget = ({
       cleaningBRL: cleaningUSD * usdToBrl,
     }
   }, [calculation, rates])
+
+  useEffect(() => {
+    if (mode === 'public' && calculation && !calculation.hasBlockedConflict && calculation.totalNights > 0 && onQuoteCalculated) {
+      onQuoteCalculated(startDateStr, endDateStr)
+    }
+  }, [mode, calculation, startDateStr, endDateStr, onQuoteCalculated])
 
   return (
     <section className={`card cotizador-card${mode === 'private' ? ' cotizador-card--private' : ''}`}>

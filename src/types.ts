@@ -86,6 +86,8 @@ export interface PropertyDTO {
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   defaultCheckInTime?: string | null
   defaultCheckOutTime?: string | null
+  publicViewsCount?: number
+  publicQuotesCount?: number
 }
 
 export interface NewPropertyPayload {

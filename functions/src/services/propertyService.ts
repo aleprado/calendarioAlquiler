@@ -230,6 +230,16 @@ export class PropertyService {
 
     return await propertyRepository.getByPublicSlug(slug.trim())
   }
+
+  async recordPublicView(slug: string): Promise<void> {
+    if (!slug.trim()) return
+    await propertyRepository.incrementViewsBySlug(slug.trim())
+  }
+
+  async recordPublicQuote(slug: string): Promise<void> {
+    if (!slug.trim()) return
+    await propertyRepository.incrementQuotesBySlug(slug.trim())
+  }
 }
 
 export const propertyService = new PropertyService()

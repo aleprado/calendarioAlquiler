@@ -15,3 +15,23 @@ export const submitPublicRequest = async (
   })
   return { notificationSent: Boolean(data.notificationSent) }
 }
+
+export const recordPublicView = async (publicSlug: string): Promise<void> => {
+  try {
+    await apiRequest<void>(`/public/properties/${encodeURIComponent(publicSlug)}/view`, {
+      method: 'POST',
+    })
+  } catch (err) {
+    console.error('No se pudo registrar la vista pública:', err)
+  }
+}
+
+export const recordPublicQuote = async (publicSlug: string): Promise<void> => {
+  try {
+    await apiRequest<void>(`/public/properties/${encodeURIComponent(publicSlug)}/quote`, {
+      method: 'POST',
+    })
+  } catch (err) {
+    console.error('No se pudo registrar la cotización pública:', err)
+  }
+}

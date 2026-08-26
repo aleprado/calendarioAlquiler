@@ -347,6 +347,22 @@ publicRouter.post(
   }),
 )
 
+publicRouter.post(
+  '/properties/:publicSlug/view',
+  asyncHandler(async (req, res) => {
+    await propertyService.recordPublicView(req.params.publicSlug)
+    res.status(204).send()
+  }),
+)
+
+publicRouter.post(
+  '/properties/:publicSlug/quote',
+  asyncHandler(async (req, res) => {
+    await propertyService.recordPublicQuote(req.params.publicSlug)
+    res.status(204).send()
+  }),
+)
+
 app.use('/public', publicRouter)
 
 /* ==================== Handler de errores ==================== */

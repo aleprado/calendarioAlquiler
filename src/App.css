@@ -2677,6 +2677,333 @@ a.danger {
   padding: 0.3rem 0.4rem;
 }
 
+/* ==================== Workspace Tabs & Metrics View ==================== */
+.workspace-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid rgba(15, 118, 110, 0.12);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.2rem;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.15rem;
+  border: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -0.3rem;
+}
+
+.workspace-tab:hover {
+  color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.05);
+}
+
+.workspace-tab--active {
+  color: var(--color-primary-dark);
+  background: #ffffff;
+  border-bottom-color: var(--color-primary);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.workspace-tab__icon {
+  font-size: 1.1rem;
+}
+
+/* Metrics View Container & Header */
+.metrics-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.metrics-header {
+  margin-bottom: 0.25rem;
+}
+
+.metrics-header h2 {
+  margin: 0 0 0.35rem 0;
+  font-family: 'Fraunces', Georgia, serif;
+  color: var(--color-primary-dark);
+}
+
+/* KPI Cards Grid */
+.metrics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #ffffff;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: rgba(13, 148, 136, 0.08);
+  flex-shrink: 0;
+}
+
+.kpi-card--views .kpi-card__icon { background: #e0f2fe; }
+.kpi-card--quotes .kpi-card__icon { background: #fef3c7; }
+.kpi-card--requests .kpi-card__icon { background: #dcfce7; }
+.kpi-card--conversion .kpi-card__icon { background: #f3e8ff; }
+
+.kpi-card__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-card__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpi-card__value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  line-height: 1.25;
+}
+
+.kpi-card__subtext {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 0.15rem;
+}
+
+/* Sections Grid */
+.metrics-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.metrics-card {
+  padding: 1.25rem;
+}
+
+.metrics-card h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.15rem;
+  color: var(--color-primary-dark);
+}
+
+/* Occupancy Progress Display */
+.occupancy-display {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin: 1.2rem 0;
+}
+
+.occupancy-metric__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.progress-bar__fill--primary {
+  background: linear-gradient(90deg, #0d9488, #0284c7);
+}
+
+.progress-bar__fill--secondary {
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+}
+
+.occupancy-stats-footer {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.stat-pill {
+  font-size: 0.82rem;
+  background: #f8fafc;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Channel Distribution */
+.channel-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-top: 1rem;
+}
+
+.channel-progress {
+  display: flex;
+  height: 16px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.channel-progress__segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.channel-progress__segment--airbnb { background: #f97316; }
+.channel-progress__segment--manual { background: #0ea5e9; }
+.channel-progress__segment--web { background: #10b981; }
+
+.channel-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.channel-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot--airbnb { background: #f97316; }
+.legend-dot--manual { background: #0ea5e9; }
+.legend-dot--web { background: #10b981; }
+
+/* Revenue Card */
+.revenue-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+
+.revenue-main-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(2, 132, 199, 0.1) 100%);
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+}
+
+.revenue-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+.revenue-amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.revenue-currencies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.revenue-currency-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.revenue-currency-box span {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.revenue-currency-box strong {
+  font-size: 1.25rem;
+  color: var(--color-primary-dark);
+}
+
+.revenue-currency-box small {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.empty-state-text {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
 
 
 
