@@ -14,8 +14,6 @@ import { PropertySettingsView } from '../components/PropertySettingsView'
 import { Logo } from '../components/Logo'
 import { useToast } from '../components/ToastNotification'
 
-import { requestNotificationPermission } from '../services/notificationService'
-
 const getPublicUrl = (property: PropertyDTO) => {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   return `${origin}/public/${property.publicSlug}`
@@ -105,7 +103,6 @@ export const DashboardPage = () => {
 
   useEffect(() => {
     void loadProperties()
-    void requestNotificationPermission()
   }, [loadProperties])
 
   const selectedProperty = useMemo(

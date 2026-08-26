@@ -45,6 +45,8 @@ export interface UpdatePropertyPayload {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
   regenerateSlug?: boolean
 }
 
@@ -197,6 +199,8 @@ export class PropertyService {
       quoterAdminCommissionPercent: payload.quoterAdminCommissionPercent,
       quoterCleaningFeeUSD: payload.quoterCleaningFeeUSD,
       quoterCustomExchangeRates: payload.quoterCustomExchangeRates,
+      defaultCheckInTime: payload.defaultCheckInTime,
+      defaultCheckOutTime: payload.defaultCheckOutTime,
       regenerateSlug: payload.regenerateSlug,
     })
   }

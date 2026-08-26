@@ -521,17 +521,17 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                       {notificationPermission === 'granted'
                         ? '✅ Permitidas'
                         : notificationPermission === 'denied'
-                        ? '❌ Denegadas en el navegador'
+                        ? '❌ Denegadas en tu navegador'
                         : '⚠️ Pendiente de autorización'}
                     </span>
-                    {notificationPermission !== 'granted' && (
-                      <button type="button" className="secondary" onClick={() => void handleRequestNotification()}>
+                    {notificationPermission === 'default' && (
+                      <button type="button" className="primary" onClick={() => void handleRequestNotification()}>
                         Activar Notificaciones Push
                       </button>
                     )}
                     <button
                       type="button"
-                      className="secondary btn-sm"
+                      className="secondary"
                       onClick={() => {
                         playNotificationSound()
                         showReservationRequestNotification(property.name, 'Huésped de Prueba', '14/09/2026 al 18/09/2026')
@@ -540,6 +540,13 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                       🔊 Probar Sonido y Notificación
                     </button>
                   </div>
+                  {notificationPermission === 'denied' && (
+                    <div className="alert alert--inline" style={{ marginTop: '0.85rem' }} role="alert">
+                      <span>
+                        🔒 <strong>Las notificaciones están bloqueadas en tu navegador:</strong> Para activarlas, haz clic en el ícono de candado/ajustes 🔒 situado en la barra de dirección web de tu navegador (junto a la URL) y cambia la opción <em>"Notificaciones"</em> a <strong>Permitir</strong>.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
