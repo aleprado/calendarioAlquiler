@@ -63,6 +63,8 @@ export interface PropertyRecord {
   quoterCustomExchangeRates: { usdToArs?: number; usdToBrl?: number } | null
   defaultCheckInTime: string | null
   defaultCheckOutTime: string | null
+  publicViewsCount: number
+  publicQuotesCount: number
 }
 
 export interface CreatePropertyInput {
@@ -158,6 +160,8 @@ export class PropertyRepository {
       quoterCustomExchangeRates: customRates ? (normalizeNumberMap(customRates) as { usdToArs?: number; usdToBrl?: number }) : null,
       defaultCheckInTime: normalizeOptionalString((data as Record<string, unknown>).defaultCheckInTime) ?? '15:00',
       defaultCheckOutTime: normalizeOptionalString((data as Record<string, unknown>).defaultCheckOutTime) ?? '11:00',
+      publicViewsCount: normalizeOptionalNumber((data as Record<string, unknown>).publicViewsCount) ?? 0,
+      publicQuotesCount: normalizeOptionalNumber((data as Record<string, unknown>).publicQuotesCount) ?? 0,
     }
   }
 
@@ -346,6 +350,22 @@ export class PropertyRepository {
     const updatedSnapshot = await docRef.get()
     const record = this.toRecord(updatedSnapshot)
     return record ? await this.normalizeShareMetadata(record) : existing
+  }
+
+  async incrementViewsBySlug(slug: string): Promise<void> {
+    const snapshot = await propertiesCollection.where('publicSlug', '==', slug).limit(1).get()
+    if (snapshot.empty) return
+    await snapshot.docs[0].ref.update({
+      publicViewsCount: FieldValue.increment(1),
+    })
+  }
+
+  async incrementQuotesBySlug(slug: string): Promise<void> {
+    const snapshot = await propertiesCollection.where('publicSlug', '==', slug).limit(1).get()
+    if (snapshot.empty) return
+    await snapshot.docs[0].ref.update({
+      publicQuotesCount: FieldValue.increment(1),
+    })
   }
 }
 

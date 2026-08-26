@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
+import { getFirestore, type Firestore } from 'firebase/firestore'
 
 const requiredKeys = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_APP_ID'] as const
 
@@ -19,6 +20,7 @@ if (missing.length > 0) {
 
 let firebaseApp: FirebaseApp | null = null
 let firebaseAuth: Auth | null = null
+let firebaseDb: Firestore | null = null
 
 export const getFirebaseApp = () => {
   if (!firebaseApp) {
@@ -32,6 +34,13 @@ export const getFirebaseAuth = () => {
     firebaseAuth = getAuth(getFirebaseApp())
   }
   return firebaseAuth
+}
+
+export const getFirestoreDb = () => {
+  if (!firebaseDb) {
+    firebaseDb = getFirestore(getFirebaseApp())
+  }
+  return firebaseDb
 }
 
 export const googleProvider = new GoogleAuthProvider()

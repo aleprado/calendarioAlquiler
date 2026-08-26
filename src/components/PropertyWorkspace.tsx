@@ -8,6 +8,8 @@ import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventCompon
 import type { CalendarEvent, CalendarEventDTO, PropertyDTO } from '../types'
 import { createEvent, deleteEvent, fetchEvents, syncAirbnb, updateEvent, updateEventStatus } from '../api/events'
 import { CotizadorWidget } from './CotizadorWidget'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { getFirestoreDb } from '../lib/firebase'
 import { showReservationRequestNotification } from '../services/notificationService'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -348,8 +350,24 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       if (active) setIsSyncing(false)
     }
     bootstrap()
+
+    // Real-time Firestore snapshot listener: zero polling, 100% free-tier, instant push & UI update!
+    let unsubscribeSnapshot: (() => void) | null = null
+    try {
+      const db = getFirestoreDb()
+      const eventsRef = collection(db, 'properties', property.id, 'events')
+      unsubscribeSnapshot = onSnapshot(eventsRef, () => {
+        if (active) {
+          void loadEvents({ skipClearError: true, silent: true })
+        }
+      })
+    } catch (err) {
+      console.warn('[PropertyWorkspace] Could not attach real-time Firestore listener:', err)
+    }
+
     return () => {
       active = false
+      unsubscribeSnapshot?.()
     }
   }, [loadEvents, property.id])
 
