@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { Logo } from '../components/Logo'
+import { LanguageSelector } from '../components/LanguageSelector'
+import { useLocale } from '../i18n/LocaleContext'
 
 export const LandingPage = () => {
   const { user, loading, signIn } = useAuth()
   const navigate = useNavigate()
+  const { t } = useLocale()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -20,7 +23,7 @@ export const LandingPage = () => {
       await signIn()
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión')
+      setError(err instanceof Error ? err.message : t('landingSignIn'))
     }
   }
 
@@ -32,20 +35,23 @@ export const LandingPage = () => {
           <h1>
             simplealquiler<span>.net</span>
           </h1>
-          <p>Gestion profesional de alquileres vacacionales con calendario, web de promocion y reservas directas.</p>
+          <p>{t('landingTagline')}</p>
           <button type="button" className="primary" onClick={handleSignIn} disabled={loading}>
-            {loading ? 'Cargando...' : 'Ingresar con Google'}
+            {loading ? t('loading') : t('landingSignIn')}
           </button>
           {error && <p className="alert alert--inline">{error}</p>}
         </header>
         <section className="landing-features">
-          <h2>Todo en un solo panel</h2>
+          <h2>{t('landingAll')}</h2>
           <ul>
-            <li>Sincronizacion automatica de disponibilidad</li>
-            <li>Pagina publica de promocion con mapa e imagenes</li>
-            <li>Calendario de reservas separado y mas practico</li>
+            <li>{t('landingFeature1')}</li>
+            <li>{t('landingFeature2')}</li>
+            <li>{t('landingFeature3')}</li>
           </ul>
         </section>
+        <div className="landing-language">
+          <LanguageSelector />
+        </div>
       </main>
     </div>
   )

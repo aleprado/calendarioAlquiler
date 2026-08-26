@@ -1,19 +1,7 @@
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es, ptBR } from 'date-fns/locale'
 import type { CalendarEvent } from '../types'
-
-const formatDateRange = (start: Date, end: Date) => {
-  const startLabel = format(start, "EEEE d 'de' MMMM yyyy", { locale: es })
-  const endLabel = format(end, "EEEE d 'de' MMMM yyyy", { locale: es })
-  return `${startLabel} → ${endLabel}`
-}
-
-const statusLabels: Record<CalendarEvent['status'], string> = {
-  confirmed: 'Confirmado',
-  tentative: 'Tentativo',
-  pending: 'Pendiente',
-  declined: 'Declinado',
-}
+import { useLocale } from '../i18n/LocaleContext'
 
 interface EventDetailsModalProps {
   isOpen: boolean
@@ -40,13 +28,32 @@ export const EventDetailsModal = ({
   isProcessing = false,
   errorMessage,
 }: EventDetailsModalProps) => {
-  if (!isOpen || !event) {
-    return null
+  const { t, locale } = useLocale()
+  const dateFnsLocale = locale === 'pt' ? ptBR : es
+
+  const formatDateRange = (start: Date, end: Date) => {
+    const startLabel = format(start, "EEEE d 'de' MMMM yyyy", { locale: dateFnsLocale })
+    const endLabel = format(end, "EEEE d 'de' MMMM yyyy", { locale: dateFnsLocale })
+    return `${startLabel} → ${endLabel}`
   }
+
+  if (!isOpen || !event) return null
 
   const showRequesterInfo = event.source === 'public'
   const cleaningStatusLabel =
-    event.cleaningStatus === 'pending' ? 'Pendiente' : event.cleaningStatus === 'done' ? 'Lista' : 'Sin definir'
+    event.cleaningStatus === 'pending' ? t('eventDetailsCleaningPending') :
+    event.cleaningStatus === 'done' ? t('eventDetailsCleaningDone') : t('eventDetailsCleaningNone')
+
+  const originLabel =
+    event.source === 'airbnb' ? t('eventDetailsOriginAirbnb') :
+    event.source === 'public' ? t('eventDetailsOriginPublic') : t('eventDetailsOriginManual')
+
+  const statusLabel = {
+    confirmed: t('eventDetailsStatusConfirmed'),
+    tentative: t('eventDetailsTentative'),
+    pending: t('eventDetailsPending'),
+    declined: t('eventDetailsDeclined'),
+  }[event.status]
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -55,56 +62,44 @@ export const EventDetailsModal = ({
         <p className="modal-range">{formatDateRange(event.start, event.end)}</p>
         <dl className="event-details-list">
           <div>
-            <dt>Estado</dt>
-            <dd>{statusLabels[event.status]}</dd>
+            <dt>{t('eventDetailsStatus')}</dt>
+            <dd>{statusLabel}</dd>
           </div>
           <div>
-            <dt>Origen</dt>
-            <dd>{event.source === 'airbnb' ? 'Airbnb (sincronizado)' : event.source === 'public' ? 'Solicitud pública' : 'Manual'}</dd>
+            <dt>{t('eventDetailsOrigin')}</dt>
+            <dd>{originLabel}</dd>
           </div>
           {event.status === 'confirmed' && (
             <div>
-              <dt>Limpieza</dt>
+              <dt>{t('eventDetailsCleaning')}</dt>
               <dd>{cleaningStatusLabel}</dd>
             </div>
           )}
           {event.description && (
             <div>
-              <dt>Descripción</dt>
+              <dt>{t('eventDetailsDescription')}</dt>
               <dd>{event.description}</dd>
             </div>
           )}
           {event.location && (
             <div>
-              <dt>Ubicación</dt>
+              <dt>{t('eventDetailsLocation')}</dt>
               <dd>{event.location}</dd>
             </div>
           )}
           {showRequesterInfo && (
             <>
               {event.requesterName && (
-                <div>
-                  <dt>Nombre</dt>
-                  <dd>{event.requesterName}</dd>
-                </div>
+                <div><dt>{t('eventDetailsName')}</dt><dd>{event.requesterName}</dd></div>
               )}
               {event.requesterEmail && (
-                <div>
-                  <dt>Email</dt>
-                  <dd>{event.requesterEmail}</dd>
-                </div>
+                <div><dt>{t('eventDetailsEmail')}</dt><dd>{event.requesterEmail}</dd></div>
               )}
               {event.requesterPhone && (
-                <div>
-                  <dt>Teléfono</dt>
-                  <dd>{event.requesterPhone}</dd>
-                </div>
+                <div><dt>{t('eventDetailsPhone')}</dt><dd>{event.requesterPhone}</dd></div>
               )}
               {event.notes && (
-                <div>
-                  <dt>Notas</dt>
-                  <dd>{event.notes}</dd>
-                </div>
+                <div><dt>{t('eventDetailsNotes')}</dt><dd>{event.notes}</dd></div>
               )}
             </>
           )}
@@ -114,31 +109,31 @@ export const EventDetailsModal = ({
         </div>
         <div className="modal-actions">
           <button type="button" className="secondary" onClick={onClose} disabled={isProcessing}>
-            Cerrar
+            {t('close')}
           </button>
           {onEdit && (
             <button type="button" className="secondary" onClick={onEdit} disabled={isProcessing}>
-              Editar
+              {t('edit')}
             </button>
           )}
           {onDecline && (
             <button type="button" className="secondary" onClick={onDecline} disabled={isProcessing}>
-              Declinar
+              {t('eventDetailsDecline')}
             </button>
           )}
           {onConfirm && (
             <button type="button" className="primary" onClick={onConfirm} disabled={isProcessing}>
-              Aceptar solicitud
+              {t('eventDetailsAccept')}
             </button>
           )}
           {onToggleCleaning && event.status === 'confirmed' && (
             <button type="button" className="secondary" onClick={onToggleCleaning} disabled={isProcessing}>
-              {event.cleaningStatus === 'pending' ? 'Marcar limpieza lista' : 'Marcar limpieza pendiente'}
+              {event.cleaningStatus === 'pending' ? t('eventDetailsMarkCleaningDone') : t('eventDetailsMarkCleaningPending')}
             </button>
           )}
           {onDelete && (
             <button type="button" className="danger" onClick={onDelete} disabled={isProcessing}>
-              Eliminar
+              {t('delete')}
             </button>
           )}
         </div>

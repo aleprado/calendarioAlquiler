@@ -8,6 +8,7 @@ export interface CreatePropertyPayload {
   airbnbIcalUrl: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -30,6 +31,7 @@ export interface UpdatePropertyPayload {
   airbnbIcalUrl?: string
   instagramUrl?: string | null
   googlePhotosUrl?: string | null
+  coverImageUrl?: string | null
   description?: string | null
   locationLabel?: string | null
   googleMapsPinUrl?: string | null
@@ -129,6 +131,7 @@ export class PropertyService {
       airbnbIcalUrl: payload.airbnbIcalUrl.trim(),
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl) ?? null,
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl) ?? null,
+      coverImageUrl: sanitizeOptionalUrl(payload.coverImageUrl) ?? null,
       description: sanitizeOptionalText(payload.description) ?? null,
       locationLabel: sanitizeOptionalText(payload.locationLabel) ?? resolvedMap?.locationLabel ?? null,
       googleMapsPinUrl: (resolvedMap?.resolvedUrl ?? sanitizedPinUrl) ?? null,
@@ -182,6 +185,7 @@ export class PropertyService {
       airbnbIcalUrl: payload.airbnbIcalUrl,
       instagramUrl: sanitizeOptionalUrl(payload.instagramUrl),
       googlePhotosUrl: sanitizeOptionalUrl(payload.googlePhotosUrl),
+      coverImageUrl: sanitizeOptionalUrl(payload.coverImageUrl),
       description: sanitizeOptionalText(payload.description),
       locationLabel:
         sanitizedLocationLabel !== undefined ? sanitizedLocationLabel : (resolvedMap?.locationLabel ?? undefined),

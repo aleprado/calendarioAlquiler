@@ -5,6 +5,8 @@ import { LandingPage } from './pages/LandingPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { PublicPropertyPage } from './pages/PublicPropertyPage'
 import { PublicPromoPage } from './pages/PublicPromoPage'
+import { ToastProvider } from './components/ToastNotification'
+import { LocaleProvider } from './i18n/LocaleContext'
 
 const LoadingScreen = () => (
   <div className="loading loading--fullscreen" role="status">
@@ -14,37 +16,30 @@ const LoadingScreen = () => (
 
 const ProtectedRoute = ({ children }: { children: ReactElement }) => {
   const { user, loading } = useAuth()
-
-  if (loading) {
-    return <LoadingScreen />
-  }
-
-  if (!user) {
-    return <Navigate to="/" replace />
-  }
-
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/" replace />
   return children
 }
 
-import { ToastProvider } from './components/ToastNotification'
-
 export default function App() {
   return (
-    <ToastProvider>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/public/:publicSlug" element={<PublicPromoPage />} />
-        <Route path="/public/:publicSlug/calendario" element={<PublicPropertyPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </ToastProvider>
+    <LocaleProvider>
+      <ToastProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/public/:publicSlug" element={<PublicPromoPage />} />
+          <Route path="/public/:publicSlug/calendario" element={<PublicPropertyPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ToastProvider>
+    </LocaleProvider>
   )
 }

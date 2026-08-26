@@ -6,6 +6,8 @@ import { RequestFormModal } from '../components/RequestFormModal'
 import { CotizadorWidget } from '../components/CotizadorWidget'
 import { fetchPublicAvailability, submitPublicRequest, recordPublicView, recordPublicQuote } from '../api/public'
 import type { CalendarEvent, PublicAvailabilityDTO } from '../types'
+import { useLocale } from '../i18n/LocaleContext'
+import { LanguageSelector } from '../components/LanguageSelector'
 
 const formatDateLocal = (d: Date) => {
   const year = d.getFullYear()
@@ -21,25 +23,6 @@ const toIsoDateString = (d: Date) => {
   return `${year}-${month}-${day}T00:00:00.000Z`
 }
 
-const calendarMessages = {
-  date: 'Fecha',
-  time: 'Hora',
-  event: 'Evento',
-  allDay: 'Todo el dia',
-  week: 'Semana',
-  work_week: 'Semana laboral',
-  day: 'Dia',
-  month: 'Mes',
-  previous: 'Anterior',
-  next: 'Siguiente',
-  yesterday: 'Ayer',
-  tomorrow: 'Manana',
-  today: 'Hoy',
-  agenda: 'Agenda',
-  showMore: (total: number) => `+${total} mas`,
-  noEventsInRange: 'No hay eventos en este rango.',
-}
-
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const toUtcDateKey = (date: Date) => date.toISOString().slice(0, 10)
@@ -53,7 +36,7 @@ const ensureEndAfterStart = (start: Date, end: Date) => {
   return end
 }
 
-const startOfDayLocal = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
+const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
 const normalizeSlotSelection = (start: Date, end: Date) => {
   const normalizedStart = startOfDayLocal(start)
@@ -115,6 +98,27 @@ const eventPropGetter: CalendarEventPropGetter = () => ({
 
 export const PublicPropertyPage = () => {
   const { publicSlug = '' } = useParams()
+  const { t } = useLocale()
+  
+  const calendarMessages = useMemo(() => ({
+    date: t('calDate'),
+    time: t('calTime'),
+    event: t('calEvent'),
+    allDay: t('calAllDay'),
+    week: t('calWeek'),
+    work_week: t('calWorkWeek'),
+    day: t('calDay'),
+    month: t('calMonth'),
+    previous: t('calPrevious'),
+    next: t('calNext'),
+    yesterday: t('calYesterday'),
+    tomorrow: t('calTomorrow'),
+    today: t('calToday'),
+    agenda: t('calAgenda'),
+    showMore: (total: number) => `+${total}`,
+    noEventsInRange: t('calNoEvents'),
+  }), [t])
+
   const [data, setData] = useState<PublicAvailabilityDTO | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -139,11 +143,11 @@ export const PublicPropertyPage = () => {
         void recordPublicView(publicSlug)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar la disponibilidad.')
+      setError(err instanceof Error ? err.message : t('publicLoadError'))
     } finally {
       setIsLoading(false)
     }
-  }, [publicSlug])
+  }, [publicSlug, t])
 
   useEffect(() => {
     void loadAvailability()
@@ -206,7 +210,7 @@ export const PublicPropertyPage = () => {
       const overlapsBlocked = events.some((event) => rangesOverlap(event, range.start, range.end) && event.status !== 'declined')
       if (overlapsBlocked) {
         setFeedback(null)
-        setCalendarHint('Las fechas seleccionadas ya están ocupadas o pendientes de confirmación.')
+        setCalendarHint(t('publicDatesOccupied'))
         return
       }
 
@@ -215,7 +219,7 @@ export const PublicPropertyPage = () => {
       setPendingRange(range)
       setModalError(null)
     },
-    [data, events],
+    [data, events, t],
   )
 
   const handleCotizadorDatesChange = (s: string, e: string) => {
@@ -266,7 +270,7 @@ export const PublicPropertyPage = () => {
     try {
       const overlapsBlocked = events.some((event) => rangesOverlap(event, payload.start, payload.end) && event.status !== 'declined')
       if (overlapsBlocked) {
-        throw new Error('Las fechas elegidas ya están ocupadas o pendientes. Elige otro rango.')
+        throw new Error(t('publicDatesTaken'))
       }
 
       const response = await submitPublicRequest(data.publicSlug, {
@@ -279,13 +283,13 @@ export const PublicPropertyPage = () => {
       })
       setFeedback(
         response.notificationSent
-          ? 'Tu solicitud quedo pendiente y avisamos al anfitrion por correo.'
-          : 'Tu solicitud quedo pendiente. El anfitrion la revisara pronto.',
+          ? t('publicRequestSentNotified')
+          : t('publicRequestSent'),
       )
       handleCloseModal()
       await loadAvailability()
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'No se pudo enviar la solicitud.')
+      setModalError(err instanceof Error ? err.message : t('publicRequestError'))
     } finally {
       setIsSubmitting(false)
     }
@@ -294,7 +298,7 @@ export const PublicPropertyPage = () => {
   return (
     <div className="public-calendar-layout">
       {isLoading ? (
-        <div className="loading">Cargando disponibilidad...</div>
+        <div className="loading">{t('publicLoadingAvail')}</div>
       ) : error ? (
         <div className="alert" role="alert">
           <span>{error}</span>
@@ -303,13 +307,14 @@ export const PublicPropertyPage = () => {
         <>
           <header className="public-calendar-header">
             <div>
-              <p className="promo-label">Calendario de reservas</p>
+              <p className="promo-label">{t('publicCalendarLabel')}</p>
               <h1>{data.propertyName}</h1>
-              <p>Selecciona fechas disponibles para solicitar tu reserva.</p>
+              <p>{t('publicCalendarDesc')}</p>
             </div>
             <div className="public-calendar-header__actions">
+              <LanguageSelector />
               <Link className="secondary" to={`/public/${data.publicSlug}`}>
-                Volver a la pagina
+                {t('publicBackToPage')}
               </Link>
             </div>
           </header>
@@ -371,7 +376,7 @@ export const PublicPropertyPage = () => {
 
       <footer className="public-mini-footer">
         <p className="public-powered-by">
-          Creado con{' '}
+          {t('poweredBy')}{' '}
           <a href="https://simplealquiler.net" target="_blank" rel="noopener noreferrer">
             simplealquiler.net
           </a>
