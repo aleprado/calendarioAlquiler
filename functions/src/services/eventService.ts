@@ -72,6 +72,8 @@ export interface PublicAvailabilityPayload {
   showQuoterPublic?: boolean
   quoterMonthlyRatesUSD?: Record<string, number>
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
   events: { start: string; end: string; status: string }[]
 }
 
@@ -242,6 +244,8 @@ export class EventService {
       showQuoterPublic: property.showQuoterPublic === true,
       quoterMonthlyRatesUSD: property.quoterMonthlyRatesUSD ?? {},
       quoterCustomExchangeRates: property.quoterCustomExchangeRates ?? null,
+      defaultCheckInTime: property.defaultCheckInTime ?? '15:00',
+      defaultCheckOutTime: property.defaultCheckOutTime ?? '11:00',
       events: sanitized,
     }
   }

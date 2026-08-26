@@ -51,6 +51,8 @@ const exchangeRatesSchema = z.object({
   usdToBrl: z.number().positive().optional(),
 }).nullable()
 
+const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Debe tener formato HH:mm (ej: 15:00)').nullable().optional()
+
 const propertyPayloadSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   airbnbIcalUrl: z.string().url('El enlace de iCal debe ser una URL válida'),
@@ -72,6 +74,8 @@ const propertyPayloadSchema = z.object({
   quoterAdminCommissionPercent: z.number().min(0).optional(),
   quoterCleaningFeeUSD: z.number().min(0).optional(),
   quoterCustomExchangeRates: exchangeRatesSchema.optional(),
+  defaultCheckInTime: timeStringSchema,
+  defaultCheckOutTime: timeStringSchema,
 })
 
 const propertyUpdateSchema = z.object({
@@ -95,6 +99,8 @@ const propertyUpdateSchema = z.object({
   quoterAdminCommissionPercent: z.number().min(0).optional(),
   quoterCleaningFeeUSD: z.number().min(0).optional(),
   quoterCustomExchangeRates: exchangeRatesSchema.optional(),
+  defaultCheckInTime: timeStringSchema,
+  defaultCheckOutTime: timeStringSchema,
   regenerateSlug: z.boolean().optional(),
 })
 

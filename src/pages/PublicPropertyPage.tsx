@@ -309,6 +309,8 @@ export const PublicPropertyPage = () => {
                 dayPropGetter={dayPropGetter}
                 monthsToShow={1}
                 showNavigator
+                checkInTime={data.defaultCheckInTime ?? '15:00'}
+                checkOutTime={data.defaultCheckOutTime ?? '11:00'}
               />
             </section>
 
@@ -319,6 +321,8 @@ export const PublicPropertyPage = () => {
                   monthlyRatesUSD={data.quoterMonthlyRatesUSD}
                   customExchangeRates={data.quoterCustomExchangeRates}
                   blockedEvents={data.events}
+                  checkInTime={data.defaultCheckInTime ?? '15:00'}
+                  checkOutTime={data.defaultCheckOutTime ?? '11:00'}
                   initialStartDate={selectedDatesStr?.start}
                   initialEndDate={selectedDatesStr?.end}
                   onDatesChange={(s, e) => handleCotizadorDatesChange(s, e)}

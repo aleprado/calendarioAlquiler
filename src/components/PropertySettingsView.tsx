@@ -1,7 +1,12 @@
-import { useState, type FC, type FormEvent } from 'react'
+import { useState, useEffect, type FC, type FormEvent } from 'react'
 import type { PropertyDTO, UpdatePropertyPayload } from '../types'
 import { parseGoogleMapsPin, updateProperty } from '../api/properties'
 import { useToast } from './ToastNotification'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  isNotificationSupported,
+} from '../services/notificationService'
 
 interface PropertySettingsViewProps {
   property: PropertyDTO
@@ -26,6 +31,56 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
   const [isImportingPhotos, setIsImportingPhotos] = useState(false)
   const [isResolvingMap, setIsResolvingMap] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
+
+  useEffect(() => {
+    setNotificationPermission(getNotificationPermission())
+  }, [])
+
+  useEffect(() => {
+    const rates = property.quoterMonthlyRatesUSD ?? {}
+    const monthRates: Record<string, string> = {}
+    for (let m = 1; m <= 12; m++) {
+      const k = String(m)
+      monthRates[k] = rates[k] !== undefined ? String(rates[k]) : '50'
+    }
+
+    setForm({
+      name: property.name,
+      airbnbIcalUrl: property.airbnbIcalUrl,
+      instagramUrl: property.instagramUrl ?? '',
+      googlePhotosUrl: property.googlePhotosUrl ?? '',
+      coverImageUrl: property.coverImageUrl ?? '',
+      defaultCheckInTime: property.defaultCheckInTime ?? '15:00',
+      defaultCheckOutTime: property.defaultCheckOutTime ?? '11:00',
+      description: property.description ?? '',
+      locationLabel: property.locationLabel ?? '',
+      googleMapsPinUrl: property.googleMapsPinUrl ?? '',
+      googleMapsPlaceId: property.googleMapsPlaceId ?? '',
+      googleMapsLat: property.googleMapsLat !== null ? String(property.googleMapsLat) : '',
+      googleMapsLng: property.googleMapsLng !== null ? String(property.googleMapsLng) : '',
+      showGoogleReviews: property.showGoogleReviews === true,
+      googleMapsReviewsUrl: property.googleMapsReviewsUrl ?? '',
+      galleryImageUrls: property.galleryImageUrls.join('\n'),
+      instagramPostUrls: property.instagramPostUrls.join('\n'),
+      showQuoterPublic: property.showQuoterPublic !== false,
+      quoterAdminCommissionPercent: String(property.quoterAdminCommissionPercent ?? 0),
+      quoterCleaningFeeUSD: String(property.quoterCleaningFeeUSD ?? 0),
+      quoterMonthlyRatesUSD: monthRates,
+      customUsdToArs: property.quoterCustomExchangeRates?.usdToArs ? String(property.quoterCustomExchangeRates.usdToArs) : '',
+      customUsdToBrl: property.quoterCustomExchangeRates?.usdToBrl ? String(property.quoterCustomExchangeRates.usdToBrl) : '',
+    })
+  }, [property])
+
+  const handleRequestNotification = async () => {
+    const res = await requestNotificationPermission()
+    setNotificationPermission(res)
+    if (res === 'granted') {
+      showToast('¡Notificaciones del navegador activadas!', 'success')
+    } else if (res === 'denied') {
+      showToast('Permiso de notificaciones denegado en tu navegador.', 'info')
+    }
+  }
 
   // Initialize form state
   const rates = property.quoterMonthlyRatesUSD ?? {}
@@ -41,6 +96,8 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
     instagramUrl: property.instagramUrl ?? '',
     googlePhotosUrl: property.googlePhotosUrl ?? '',
     coverImageUrl: property.coverImageUrl ?? '',
+    defaultCheckInTime: property.defaultCheckInTime ?? '15:00',
+    defaultCheckOutTime: property.defaultCheckOutTime ?? '11:00',
     description: property.description ?? '',
     locationLabel: property.locationLabel ?? '',
     googleMapsPinUrl: property.googleMapsPinUrl ?? '',
@@ -117,6 +174,8 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
         quoterCleaningFeeUSD: Math.max(0, Number(form.quoterCleaningFeeUSD) || 0),
         quoterMonthlyRatesUSD: parsedRates,
         quoterCustomExchangeRates: customRates,
+        defaultCheckInTime: form.defaultCheckInTime.trim() || '15:00',
+        defaultCheckOutTime: form.defaultCheckOutTime.trim() || '11:00',
       }
 
       const updated = await updateProperty(property.id, payload)
@@ -418,6 +477,61 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
               </div>
 
               <div className="settings-card-box">
+                <h3>Horarios Habituales de Check-in / Check-out</h3>
+                <p className="field-hint" style={{ marginBottom: '1rem' }}>
+                  Estos horarios se mostrarán en la vista pública, en los detalles del cotizador y en las franjas visuales del calendario.
+                </p>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label htmlFor="settings-checkin">Hora de Check-in (Entrada por la tarde)</label>
+                    <input
+                      id="settings-checkin"
+                      type="time"
+                      value={form.defaultCheckInTime}
+                      onChange={(e) => setForm((prev) => ({ ...prev, defaultCheckInTime: e.target.value }))}
+                      required
+                    />
+                    <span className="field-hint">Ej. 15:00 hs (ocupa los 2/3 inferiores de la celda)</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="settings-checkout">Hora de Check-out (Salida por la mañana)</label>
+                    <input
+                      id="settings-checkout"
+                      type="time"
+                      value={form.defaultCheckOutTime}
+                      onChange={(e) => setForm((prev) => ({ ...prev, defaultCheckOutTime: e.target.value }))}
+                      required
+                    />
+                    <span className="field-hint">Ej. 11:00 hs (ocupa el 1/3 superior de la celda)</span>
+                  </div>
+                </div>
+              </div>
+
+              {isNotificationSupported() && (
+                <div className="settings-card-box">
+                  <h3>Notificaciones del Navegador</h3>
+                  <p className="field-hint" style={{ marginBottom: '0.75rem' }}>
+                    Recibe una alerta flotante en tu escritorio/móvil al instante cuando un huésped envíe una nueva solicitud de reserva.
+                  </p>
+                  <div className="input-button-row">
+                    <span style={{ fontSize: '0.9rem', alignSelf: 'center', fontWeight: 500 }}>
+                      Estado actual:{' '}
+                      {notificationPermission === 'granted'
+                        ? '✅ Permitidas'
+                        : notificationPermission === 'denied'
+                        ? '❌ Denegadas en el navegador'
+                        : '⚠️ Pendiente de autorización'}
+                    </span>
+                    {notificationPermission !== 'granted' && (
+                      <button type="button" className="secondary" onClick={() => void handleRequestNotification()}>
+                        Activar Notificaciones Push
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="settings-card-box">
                 <h3>Google Maps & Ubicación Geográfica</h3>
                 <div className="form-group">
                   <label htmlFor="settings-maps-pin">Pin de Google Maps (URL)</label>
@@ -510,7 +624,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
               <div className="settings-card-box">
                 <h3>Foto Principal (Portada del Folleto Visual)</h3>
                 <div className="form-group">
-                  <label htmlFor="settings-cover-image">URL de Foto Principal (Opcional)</label>
+                  <label htmlFor="settings-cover-image">URL de Foto Principal (Portada)</label>
                   <input
                     id="settings-cover-image"
                     type="url"
@@ -519,9 +633,22 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                     placeholder="https://.../portada.jpg"
                   />
                   <span className="field-hint">
-                    Esta imagen se usará como el fondo principal del banner de tu propiedad. Si la dejas vacía, se tomará automáticamente la primera foto disponible de la galería.
+                    Esta imagen se usará como el fondo principal del banner público de tu propiedad. Si la dejas vacía, se tomará automáticamente la primera foto de la galería. Puedes seleccionarla haciendo clic en &ldquo;⭐ Usar como Portada&rdquo; en cualquier foto de abajo.
                   </span>
                 </div>
+                {form.coverImageUrl.trim() && (
+                  <div className="cover-preview-box" style={{ marginTop: '0.75rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Vista previa de la Portada seleccionada:
+                    </span>
+                    <img
+                      src={form.coverImageUrl.trim()}
+                      alt="Vista previa de portada"
+                      style={{ maxWidth: '280px', maxHeight: '160px', borderRadius: '8px', objectFit: 'cover', border: '2px solid var(--color-primary)' }}
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="settings-card-box">
@@ -537,17 +664,68 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                       placeholder="https://photos.app.goo.gl/tu_album"
                     />
                     <button type="button" className="secondary" onClick={() => void handleImportPhotos()} disabled={isImportingPhotos}>
-                      {isImportingPhotos ? 'Importando...' : 'Importar Fotos Manualmente'}
+                      {isImportingPhotos ? 'Importando...' : 'Cargar Fotos a Galería'}
                     </button>
                   </div>
                   <span className="field-hint">
-                    Las fotos de este álbum se sincronizan automáticamente en tiempo real en la página pública (con caché). Usar &ldquo;Importar Fotos Manualmente&rdquo; copia las URLs directamente a la lista estática inferior si prefieres administrarlas manualmente.
+                    ✨ <strong>Sincronización Automática:</strong> Al colocar el enlace de Google Fotos y guardar cambios, las imágenes se cargarán y actualizarán dinámicamente en tu página pública.
                   </span>
                 </div>
               </div>
 
+              {parseUrlList(form.galleryImageUrls).length > 0 && (
+                <div className="settings-card-box">
+                  <h3>Gestión Visual de Fotos de la Galería ({parseUrlList(form.galleryImageUrls).length})</h3>
+                  <p className="field-hint" style={{ marginBottom: '1rem' }}>
+                    Haz clic en <strong>&ldquo;⭐ Usar como Portada&rdquo;</strong> en cualquier imagen para fijarla como la foto principal del banner.
+                  </p>
+                  <div className="settings-photo-grid">
+                    {parseUrlList(form.galleryImageUrls).map((url, idx) => {
+                      const isCover = form.coverImageUrl.trim() === url.trim()
+                      return (
+                        <div key={`${url}-${idx}`} className={`photo-thumb-card ${isCover ? 'photo-thumb-card--cover' : ''}`}>
+                          <div className="photo-thumb-img-wrapper">
+                            <img src={url} alt={`Foto ${idx + 1}`} loading="lazy" />
+                            {isCover && <span className="cover-badge">⭐ Portada Principal</span>}
+                          </div>
+                          <div className="photo-thumb-actions">
+                            {!isCover ? (
+                              <button
+                                type="button"
+                                className="secondary btn-sm"
+                                onClick={() => setForm((prev) => ({ ...prev, coverImageUrl: url }))}
+                              >
+                                ⭐ Usar como Portada
+                              </button>
+                            ) : (
+                              <span className="active-cover-tag">✓ Portada Actual</span>
+                            )}
+                            <button
+                              type="button"
+                              className="danger btn-sm"
+                              onClick={() => {
+                                const currentList = parseUrlList(form.galleryImageUrls)
+                                const updatedList = currentList.filter((_, i) => i !== idx)
+                                const newCover = isCover ? (updatedList[0] ?? '') : form.coverImageUrl
+                                setForm((prev) => ({
+                                  ...prev,
+                                  galleryImageUrls: updatedList.join('\n'),
+                                  coverImageUrl: newCover,
+                                }))
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="settings-card-box">
-                <h3>Colección Manual de Imágenes de Galería</h3>
+                <h3>Colección de URLs de Galería (Edición por texto)</h3>
                 <div className="form-group">
                   <label htmlFor="settings-gallery-list">URLs directas de Galería (Una por línea)</label>
                   <textarea
@@ -555,7 +733,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                     value={form.galleryImageUrls}
                     onChange={(e) => setForm((prev) => ({ ...prev, galleryImageUrls: e.target.value }))}
                     placeholder={'https://.../foto1.jpg\nhttps://.../foto2.jpg'}
-                    rows={10}
+                    rows={6}
                   />
                   <span className="field-hint">Las fotos se mostrarán paginadas en la página pública en bloques de 8 imágenes.</span>
                 </div>

@@ -21,6 +21,8 @@ type MultiMonthCalendarProps = {
   showNavigator?: boolean
   anchorMonth?: Date
   onAnchorMonthChange?: (month: Date) => void
+  checkInTime?: string
+  checkOutTime?: string
 }
 
 const DEFAULT_TOTAL_MONTHS = 12
@@ -41,6 +43,11 @@ const filterEventsForMonth = <T extends CalendarEvent>(events: T[], monthDate: D
   })
 }
 
+const isSameDayLocal = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
+
 export const MultiMonthCalendar = ({
   events,
   messages,
@@ -53,6 +60,8 @@ export const MultiMonthCalendar = ({
   showNavigator = false,
   anchorMonth,
   onAnchorMonthChange,
+  checkInTime = '15:00',
+  checkOutTime = '11:00',
 }: MultiMonthCalendarProps) => {
   const todayMonth = useMemo(() => startOfMonth(new Date()), [])
   const [internalAnchorMonth, setInternalAnchorMonth] = useState(todayMonth)
@@ -134,6 +143,55 @@ export const MultiMonthCalendar = ({
               longPressThreshold={250}
               components={{
                 toolbar,
+                dateCellWrapper: ({ value, children }: { value: Date; children: React.ReactNode }) => {
+                  if (value.getMonth() !== date.getMonth()) {
+                    return <div className="rbc-day-bg">{children}</div>
+                  }
+
+                  const dayStart = new Date(value.getFullYear(), value.getMonth(), value.getDate())
+
+                  let isCheckin = false
+                  let isCheckout = false
+                  let isFullOccupied = false
+
+                  for (const event of events) {
+                    if (event.status === 'declined') continue
+
+                    const evStart = new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate())
+                    const evEnd = new Date(event.end.getFullYear(), event.end.getMonth(), event.end.getDate())
+
+                    if (isSameDayLocal(dayStart, evStart)) {
+                      isCheckin = true
+                    }
+                    if (isSameDayLocal(dayStart, evEnd)) {
+                      isCheckout = true
+                    }
+                    if (dayStart > evStart && dayStart < evEnd) {
+                      isFullOccupied = true
+                    }
+                  }
+
+                  return (
+                    <div className="rbc-day-bg-custom-wrapper">
+                      {children}
+                      {isFullOccupied && !isCheckin && !isCheckout && (
+                        <div className="cell-overlay cell-overlay--full" title="Noche ocupada">
+                          <span className="cell-overlay__text">Ocupado</span>
+                        </div>
+                      )}
+                      {isCheckout && (
+                        <div className="cell-overlay cell-overlay--checkout" title={`Check-out ${checkOutTime} hs`}>
+                          <span className="cell-overlay__text">Out {checkOutTime}</span>
+                        </div>
+                      )}
+                      {isCheckin && (
+                        <div className="cell-overlay cell-overlay--checkin" title={`Check-in ${checkInTime} hs`}>
+                          <span className="cell-overlay__text">In {checkInTime}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                },
                 ...(renderMonthEvent
                   ? {
                       month: {

@@ -84,6 +84,8 @@ export interface PropertyDTO {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
 }
 
 export interface NewPropertyPayload {
@@ -107,6 +109,8 @@ export interface NewPropertyPayload {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
 }
 
 export interface UpdatePropertyPayload {
@@ -130,6 +134,8 @@ export interface UpdatePropertyPayload {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
   regenerateSlug?: boolean
 }
 
@@ -176,6 +182,8 @@ export interface PublicAvailabilityDTO {
   showQuoterPublic?: boolean
   quoterMonthlyRatesUSD?: Record<string, number>
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
   events: PublicEventDTO[]
 }
 

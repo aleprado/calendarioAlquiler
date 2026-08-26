@@ -523,6 +523,8 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
         adminCommissionPercent={property.quoterAdminCommissionPercent}
         cleaningFeeUSD={property.quoterCleaningFeeUSD}
         customExchangeRates={property.quoterCustomExchangeRates}
+        checkInTime={property.defaultCheckInTime ?? '15:00'}
+        checkOutTime={property.defaultCheckOutTime ?? '11:00'}
         onOpenSettings={onOpenSettings}
       />
 
@@ -547,6 +549,8 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
             showNavigator
             anchorMonth={activeMonth}
             onAnchorMonthChange={setActiveMonth}
+            checkInTime={property.defaultCheckInTime ?? '15:00'}
+            checkOutTime={property.defaultCheckOutTime ?? '11:00'}
           />
         )}
       </div>

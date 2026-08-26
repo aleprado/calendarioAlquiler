@@ -61,6 +61,8 @@ export interface PropertyRecord {
   quoterAdminCommissionPercent: number
   quoterCleaningFeeUSD: number
   quoterCustomExchangeRates: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime: string | null
+  defaultCheckOutTime: string | null
 }
 
 export interface CreatePropertyInput {
@@ -85,6 +87,8 @@ export interface CreatePropertyInput {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
 }
 
 export interface UpdatePropertyInput {
@@ -108,6 +112,8 @@ export interface UpdatePropertyInput {
   quoterAdminCommissionPercent?: number
   quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  defaultCheckInTime?: string | null
+  defaultCheckOutTime?: string | null
   regenerateSlug?: boolean
 }
 
@@ -150,6 +156,8 @@ export class PropertyRepository {
       quoterAdminCommissionPercent: normalizeOptionalNumber((data as Record<string, unknown>).quoterAdminCommissionPercent) ?? 0,
       quoterCleaningFeeUSD: normalizeOptionalNumber((data as Record<string, unknown>).quoterCleaningFeeUSD) ?? 0,
       quoterCustomExchangeRates: customRates ? (normalizeNumberMap(customRates) as { usdToArs?: number; usdToBrl?: number }) : null,
+      defaultCheckInTime: normalizeOptionalString((data as Record<string, unknown>).defaultCheckInTime) ?? '15:00',
+      defaultCheckOutTime: normalizeOptionalString((data as Record<string, unknown>).defaultCheckOutTime) ?? '11:00',
     }
   }
 
@@ -253,6 +261,8 @@ export class PropertyRepository {
       quoterAdminCommissionPercent: typeof input.quoterAdminCommissionPercent === 'number' ? Math.max(0, input.quoterAdminCommissionPercent) : 0,
       quoterCleaningFeeUSD: typeof input.quoterCleaningFeeUSD === 'number' ? Math.max(0, input.quoterCleaningFeeUSD) : 0,
       quoterCustomExchangeRates: input.quoterCustomExchangeRates ? (normalizeNumberMap(input.quoterCustomExchangeRates) as { usdToArs?: number; usdToBrl?: number }) : null,
+      defaultCheckInTime: normalizeOptionalString(input.defaultCheckInTime) ?? '15:00',
+      defaultCheckOutTime: normalizeOptionalString(input.defaultCheckOutTime) ?? '11:00',
     }
 
     await docRef.set(payload)
@@ -301,6 +311,8 @@ export class PropertyRepository {
       ...(updates.quoterAdminCommissionPercent !== undefined ? { quoterAdminCommissionPercent: Math.max(0, updates.quoterAdminCommissionPercent) } : {}),
       ...(updates.quoterCleaningFeeUSD !== undefined ? { quoterCleaningFeeUSD: Math.max(0, updates.quoterCleaningFeeUSD) } : {}),
       ...(updates.quoterCustomExchangeRates !== undefined ? { quoterCustomExchangeRates: updates.quoterCustomExchangeRates ? (normalizeNumberMap(updates.quoterCustomExchangeRates) as { usdToArs?: number; usdToBrl?: number }) : null } : {}),
+      ...(updates.defaultCheckInTime !== undefined ? { defaultCheckInTime: normalizeOptionalString(updates.defaultCheckInTime) } : {}),
+      ...(updates.defaultCheckOutTime !== undefined ? { defaultCheckOutTime: normalizeOptionalString(updates.defaultCheckOutTime) } : {}),
       updatedAt: now,
     }
 

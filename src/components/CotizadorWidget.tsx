@@ -8,6 +8,8 @@ interface CotizadorWidgetProps {
   cleaningFeeUSD?: number
   customExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   blockedEvents?: { start: string; end: string }[]
+  checkInTime?: string
+  checkOutTime?: string
   initialStartDate?: string
   initialEndDate?: string
   onDatesChange?: (startStr: string, endStr: string) => void
@@ -39,6 +41,13 @@ const formatDateLocal = (d: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const formatDateDisplay = (d: Date) => {
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 const formatCurrency = (amount: number, currency: 'USD' | 'ARS' | 'BRL') => {
   if (currency === 'USD') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(amount)
@@ -56,6 +65,8 @@ export const CotizadorWidget = ({
   cleaningFeeUSD = 0,
   customExchangeRates,
   blockedEvents = [],
+  checkInTime = '15:00',
+  checkOutTime = '11:00',
   initialStartDate,
   initialEndDate,
   onDatesChange,
@@ -289,11 +300,11 @@ export const CotizadorWidget = ({
           <div className="cotizador-blocked-alert__info">
             <strong>Fechas No Disponibles</strong>
             <p>
-              El rango seleccionado (del {formatDateLocal(calculation.startDate)} al {formatDateLocal(calculation.endDate)}) incluye{' '}
+              El rango seleccionado (del {formatDateDisplay(calculation.startDate)} al {formatDateDisplay(calculation.endDate)}) incluye{' '}
               <strong>
                 {calculation.blockedNightCount} {calculation.blockedNightCount === 1 ? 'noche ocupada' : 'noches ocupadas'}
               </strong>{' '}
-              en el calendario de reservas. Consulta el calendario para elegir fechas libres.
+              en el calendario. Consulta el calendario para elegir fechas libres.
             </p>
           </div>
         </div>
@@ -301,7 +312,7 @@ export const CotizadorWidget = ({
         <div className="cotizador-results">
           <div className="cotizador-summary-header">
             <span className="cotizador-nights-badge cotizador-nights-badge--available">
-              ✓ {calculation.totalNights} {calculation.totalNights === 1 ? 'noche disponible' : 'noches disponibles'}
+              ✓ {calculation.totalNights} {calculation.totalNights === 1 ? 'noche' : 'noches'} (Check-in {checkInTime} hs — Check-out {checkOutTime} hs)
             </span>
           </div>
 
