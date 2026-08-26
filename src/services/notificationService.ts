@@ -10,6 +10,15 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
   if (!isNotificationSupported()) return 'denied'
   try {
     const permission = await Notification.requestPermission()
+
+    if (permission === 'granted' && 'serviceWorker' in navigator) {
+      try {
+        await navigator.serviceWorker.register('/sw.js')
+      } catch (swErr) {
+        console.warn('[NotificationService] Service Worker registration failed:', swErr)
+      }
+    }
+
     return permission
   } catch (err) {
     console.warn('[NotificationService] Error requesting permission:', err)
@@ -58,7 +67,7 @@ export const playNotificationSound = () => {
   }
 }
 
-export const showReservationRequestNotification = (
+export const showReservationRequestNotification = async (
   propertyName: string,
   requesterName: string,
   dateRangeText: string,
@@ -70,13 +79,26 @@ export const showReservationRequestNotification = (
 
   try {
     const title = `¡Nueva solicitud de reserva! 🏠`
-    const options: NotificationOptions = {
-      body: `${requesterName} solicitó reservar ${propertyName} (${dateRangeText}).`,
-      icon: '/favicon.svg',
-      tag: `reservation-request-${Date.now()}`,
+    const body = `${requesterName} solicitó reservar ${propertyName} (${dateRangeText}).`
+
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (reg) {
+        await reg.showNotification(title, {
+          body,
+          icon: '/favicon.svg',
+          badge: '/favicon.svg',
+          data: { url: '/' },
+        })
+        return
+      }
     }
 
-    const notification = new Notification(title, options)
+    const notification = new Notification(title, {
+      body,
+      icon: '/favicon.svg',
+      tag: `reservation-request-${Date.now()}`,
+    })
     notification.onclick = () => {
       window.focus()
       notification.close()

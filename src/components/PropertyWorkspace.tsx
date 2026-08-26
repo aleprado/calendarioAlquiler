@@ -348,17 +348,8 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       if (active) setIsSyncing(false)
     }
     bootstrap()
-
-    // Poll every 10 seconds for new events & incoming notifications
-    const pollInterval = setInterval(() => {
-      if (active) {
-        void loadEvents({ skipClearError: true, silent: true })
-      }
-    }, 10000)
-
     return () => {
       active = false
-      clearInterval(pollInterval)
     }
   }, [loadEvents, property.id])
 
