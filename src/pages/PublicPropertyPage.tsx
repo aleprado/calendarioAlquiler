@@ -54,7 +54,7 @@ const normalizeSelectionRange = (start: Date, end: Date) => {
   return {
     start: normalizedStart,
     end: endExclusive,
-    displayEnd: new Date(endExclusive.getTime() - MS_IN_DAY),
+    displayEnd: endExclusive,
   }
 }
 

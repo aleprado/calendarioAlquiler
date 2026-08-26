@@ -57,7 +57,7 @@ export const RequestFormModal = ({
       setPhone('')
       setNotes('')
       setStartDate(toDateInputValue(range.start))
-      setEndDate(toDateInputValue(range.displayEnd))
+      setEndDate(toDateInputValue(range.end))
       setLocalError(null)
       nameRef.current?.focus()
     }
@@ -78,7 +78,7 @@ export const RequestFormModal = ({
     const sMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate)
     const eMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endDate)
     if (!sMatch || !eMatch) {
-      setLocalError('Debes completar una fecha de inicio y una fecha de fin válidas.')
+      setLocalError('Debes completar una fecha de entrada y una fecha de salida válidas.')
       return
     }
 
@@ -91,14 +91,12 @@ export const RequestFormModal = ({
     const eD = Number(eMatch[3])
 
     const startUtc = new Date(Date.UTC(sY, sM - 1, sD))
-    const endInclusiveUtc = new Date(Date.UTC(eY, eM - 1, eD))
+    const endUtc = new Date(Date.UTC(eY, eM - 1, eD))
 
-    if (endInclusiveUtc < startUtc) {
-      setLocalError('La fecha de fin no puede ser anterior a la de inicio.')
+    if (endUtc <= startUtc) {
+      setLocalError('La fecha de salida debe ser posterior a la fecha de entrada.')
       return
     }
-
-    const endExclusiveUtc = new Date(Date.UTC(eY, eM - 1, eD + 1))
 
     onSubmit({
       name: trimmed,
@@ -106,14 +104,14 @@ export const RequestFormModal = ({
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
       start: startUtc,
-      end: endExclusiveUtc,
+      end: endUtc,
     })
   }
 
   const previewStart = fromDateInputValue(startDate)
   const previewEnd = fromDateInputValue(endDate)
   const rangeLabel =
-    previewStart && previewEnd && previewEnd >= previewStart ? formatRange(previewStart, previewEnd) : formatRange(range.start, range.displayEnd)
+    previewStart && previewEnd && previewEnd >= previewStart ? formatRange(previewStart, previewEnd) : formatRange(range.start, range.end)
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onCancel}>
