@@ -71,6 +71,8 @@ export interface PublicAvailabilityPayload {
   instagramPostUrls: string[]
   showQuoterPublic?: boolean
   quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   defaultCheckInTime?: string | null
   defaultCheckOutTime?: string | null
@@ -243,6 +245,8 @@ export class EventService {
       instagramPostUrls: property.instagramPostUrls ?? [],
       showQuoterPublic: property.showQuoterPublic === true,
       quoterMonthlyRatesUSD: property.quoterMonthlyRatesUSD ?? {},
+      quoterAdminCommissionPercent: property.quoterAdminCommissionPercent ?? 0,
+      quoterCleaningFeeUSD: property.quoterCleaningFeeUSD ?? 0,
       quoterCustomExchangeRates: property.quoterCustomExchangeRates ?? null,
       defaultCheckInTime: property.defaultCheckInTime ?? '15:00',
       defaultCheckOutTime: property.defaultCheckOutTime ?? '11:00',

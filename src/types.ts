@@ -181,6 +181,8 @@ export interface PublicAvailabilityDTO {
   instagramPostUrls: string[]
   showQuoterPublic?: boolean
   quoterMonthlyRatesUSD?: Record<string, number>
+  quoterAdminCommissionPercent?: number
+  quoterCleaningFeeUSD?: number
   quoterCustomExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
   defaultCheckInTime?: string | null
   defaultCheckOutTime?: string | null

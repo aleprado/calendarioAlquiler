@@ -319,6 +319,8 @@ export const PublicPropertyPage = () => {
                 <CotizadorWidget
                   mode="public"
                   monthlyRatesUSD={data.quoterMonthlyRatesUSD}
+                  adminCommissionPercent={data.quoterAdminCommissionPercent}
+                  cleaningFeeUSD={data.quoterCleaningFeeUSD}
                   customExchangeRates={data.quoterCustomExchangeRates}
                   blockedEvents={data.events}
                   checkInTime={data.defaultCheckInTime ?? '15:00'}

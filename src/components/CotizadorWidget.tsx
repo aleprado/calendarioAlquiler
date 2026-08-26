@@ -189,8 +189,8 @@ export const CotizadorWidget = ({
 
     const hasBlockedConflict = blockedNightCount > 0
     const baseStayUSD = nights.reduce((acc, curr) => acc + curr.nightRateUSD, 0)
-    const commissionUSD = mode === 'private' && adminCommissionPercent > 0 ? baseStayUSD * (adminCommissionPercent / 100) : 0
-    const cleaningUSD = mode === 'private' && cleaningFeeUSD > 0 ? cleaningFeeUSD : 0
+    const commissionUSD = adminCommissionPercent > 0 ? baseStayUSD * (adminCommissionPercent / 100) : 0
+    const cleaningUSD = cleaningFeeUSD > 0 ? cleaningFeeUSD : 0
 
     const totalUSD = baseStayUSD + commissionUSD + cleaningUSD
     const totalNights = nights.length
@@ -344,7 +344,7 @@ export const CotizadorWidget = ({
             </button>
           )}
 
-          {mode === 'private' && (
+          {(mode === 'private' || adminCommissionPercent > 0 || cleaningFeeUSD > 0) && (
             <div className="cotizador-private-breakdown">
               <div className="breakdown-item">
                 <span>Subtotal hospedaje:</span>
