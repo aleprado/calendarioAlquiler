@@ -6,6 +6,8 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
   isNotificationSupported,
+  playNotificationSound,
+  showReservationRequestNotification,
 } from '../services/notificationService'
 
 interface PropertySettingsViewProps {
@@ -509,11 +511,11 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
 
               {isNotificationSupported() && (
                 <div className="settings-card-box">
-                  <h3>Notificaciones del Navegador</h3>
+                  <h3>Notificaciones del Navegador y Sonido Alerta</h3>
                   <p className="field-hint" style={{ marginBottom: '0.75rem' }}>
-                    Recibe una alerta flotante en tu escritorio/móvil al instante cuando un huésped envíe una nueva solicitud de reserva.
+                    Recibe una alerta flotante y un timbre sonoro en tu dispositivo al instante cuando un huésped envíe una nueva solicitud de reserva.
                   </p>
-                  <div className="input-button-row">
+                  <div className="input-button-row" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
                     <span style={{ fontSize: '0.9rem', alignSelf: 'center', fontWeight: 500 }}>
                       Estado actual:{' '}
                       {notificationPermission === 'granted'
@@ -527,6 +529,16 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                         Activar Notificaciones Push
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="secondary btn-sm"
+                      onClick={() => {
+                        playNotificationSound()
+                        showReservationRequestNotification(property.name, 'Huésped de Prueba', '14/09/2026 al 18/09/2026')
+                      }}
+                    >
+                      🔊 Probar Sonido y Notificación
+                    </button>
                   </div>
                 </div>
               )}

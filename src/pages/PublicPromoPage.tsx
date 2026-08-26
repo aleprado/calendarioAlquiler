@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchPublicAvailability } from '../api/public'
+import { fetchPublicAvailability, submitPublicRequest } from '../api/public'
 import type { PublicAvailabilityDTO } from '../types'
 import { CotizadorWidget } from '../components/CotizadorWidget'
+import { RequestFormModal } from '../components/RequestFormModal'
 
 const MAPS_EMBED_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY as string | undefined)?.trim() ?? ''
 
@@ -89,6 +90,64 @@ export const PublicPromoPage = () => {
   const [galleryPage, setGalleryPage] = useState(0)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [hiddenImageUrls, setHiddenImageUrls] = useState<string[]>([])
+  const [pendingRange, setPendingRange] = useState<{ start: Date; end: Date; displayEnd: Date } | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [modalError, setModalError] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
+
+  const handleOpenReservationModalFor = (s: string, e: string) => {
+    const sP = s.split('-').map(Number)
+    const eP = e.split('-').map(Number)
+    if (sP.length === 3 && eP.length === 3) {
+      const sDate = new Date(sP[0], sP[1] - 1, sP[2])
+      const eDate = new Date(eP[0], eP[1] - 1, eP[2])
+      if (!Number.isNaN(sDate.getTime()) && !Number.isNaN(eDate.getTime()) && eDate > sDate) {
+        const range = { start: sDate, end: eDate, displayEnd: eDate }
+        setPendingRange(range)
+        setIsModalOpen(true)
+      }
+    }
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setPendingRange(null)
+    setModalError(null)
+  }
+
+  const handleSubmitRequest = async (payload: {
+    name: string
+    email?: string
+    phone?: string
+    notes?: string
+    start: Date
+    end: Date
+  }) => {
+    if (!data) return
+    setIsSubmitting(true)
+    setModalError(null)
+    try {
+      const response = await submitPublicRequest(data.publicSlug, {
+        start: payload.start.toISOString(),
+        end: payload.end.toISOString(),
+        requesterName: payload.name,
+        requesterEmail: payload.email,
+        requesterPhone: payload.phone,
+        notes: payload.notes,
+      })
+      setFeedback(
+        response.notificationSent
+          ? '¡Tu solicitud fue enviada exitosamente! Avisamos al anfitrión por correo.'
+          : '¡Tu solicitud fue enviada exitosamente! El anfitrión la revisará pronto.',
+      )
+      handleCloseModal()
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'No se pudo enviar la solicitud.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -202,6 +261,12 @@ export const PublicPromoPage = () => {
             </div>
           </header>
 
+          {feedback && (
+            <div className="alert alert--inline" role="status" style={{ margin: '1rem clamp(1rem, 5vw, 4rem)' }}>
+              <span>{feedback}</span>
+            </div>
+          )}
+
           {data.showQuoterPublic && (
             <section id="seccion-cotizador" className="promo-section">
               <CotizadorWidget
@@ -209,6 +274,9 @@ export const PublicPromoPage = () => {
                 monthlyRatesUSD={data.quoterMonthlyRatesUSD}
                 customExchangeRates={data.quoterCustomExchangeRates}
                 blockedEvents={data.events}
+                checkInTime={data.defaultCheckInTime ?? '15:00'}
+                checkOutTime={data.defaultCheckOutTime ?? '11:00'}
+                onRequestReservation={(s, e) => handleOpenReservationModalFor(s, e)}
               />
             </section>
           )}
@@ -393,6 +461,14 @@ export const PublicPromoPage = () => {
               </a>
             </p>
           </footer>
+          <RequestFormModal
+            isOpen={isModalOpen && Boolean(pendingRange)}
+            range={pendingRange}
+            onSubmit={handleSubmitRequest}
+            onCancel={handleCloseModal}
+            isSubmitting={isSubmitting}
+            errorMessage={modalError}
+          />
         </>
       ) : null}
     </div>
