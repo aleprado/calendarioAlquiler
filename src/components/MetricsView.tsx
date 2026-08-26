@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { CalendarEvent, PropertyDTO } from '../types'
 import { fetchExchangeRates, type ExchangeRates } from '../lib/exchangeRates'
+import { useLocale } from '../i18n/LocaleContext'
 
 interface MetricsViewProps {
   property: PropertyDTO
@@ -8,322 +9,203 @@ interface MetricsViewProps {
 }
 
 const formatCurrency = (amount: number, currency: 'USD' | 'ARS' | 'BRL') => {
-  if (currency === 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
-  }
-  if (currency === 'ARS') {
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount)
-  }
+  if (currency === 'USD') return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
+  if (currency === 'ARS') return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount)
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(amount)
 }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
 export const MetricsView = ({ property, events }: MetricsViewProps) => {
+  const { t } = useLocale()
   const [rates, setRates] = useState<ExchangeRates | null>(null)
 
   useEffect(() => {
     let isMounted = true
-    void fetchExchangeRates(property.quoterCustomExchangeRates).then((res) => {
-      if (isMounted) setRates(res)
-    })
-    return () => {
-      isMounted = false
-    }
+    void fetchExchangeRates(property.quoterCustomExchangeRates).then((res) => { if (isMounted) setRates(res) })
+    return () => { isMounted = false }
   }, [property.quoterCustomExchangeRates])
 
-  const metrics = useMemo(() => {
-    const today = startOfDay(new Date())
-    const currentYear = today.getFullYear()
-    const currentMonth = today.getMonth()
-
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-    const monthStart = new Date(currentYear, currentMonth, 1)
-    const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59)
-
-    // Filter confirmed/active events
-    const confirmedEvents = events.filter((e) => e.status === 'confirmed')
-    const publicEvents = events.filter((e) => e.source === 'public')
-
-    // Web Requests breakdown
-    const pendingWebRequests = publicEvents.filter((e) => e.status === 'pending').length
-    const confirmedWebRequests = publicEvents.filter((e) => e.status === 'confirmed').length
-    const declinedWebRequests = publicEvents.filter((e) => e.status === 'declined').length
-    const totalWebRequests = publicEvents.length
-
-    // Channel breakdown (Confirmed & Tentative bookings count)
-    const airbnbBookings = events.filter((e) => e.source === 'airbnb' && e.status !== 'declined').length
-    const manualBookings = events.filter((e) => e.source === 'manual' && e.status !== 'declined').length
-    const webBookings = confirmedWebRequests
-    const totalBookingsCount = airbnbBookings + manualBookings + webBookings
-
-    // Occupancy calculation for current month
-    const occupiedDaysSet = new Set<number>()
-    confirmedEvents.forEach((evt) => {
-      const start = startOfDay(evt.start)
-      const end = startOfDay(evt.end)
-      
-      const cursor = new Date(start.getTime())
-      while (cursor < end) {
-        if (cursor >= monthStart && cursor <= monthEnd) {
-          occupiedDaysSet.add(cursor.getDate())
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    })
-
-    const monthOccupiedDays = occupiedDaysSet.size
-    const monthOccupancyPercent = Math.min(100, Math.round((monthOccupiedDays / daysInMonth) * 100))
-
-    // Next 30 days occupancy
-    const next30DaysSet = new Set<string>()
-    const next30End = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
-    confirmedEvents.forEach((evt) => {
-      const start = startOfDay(evt.start)
-      const end = startOfDay(evt.end)
-      
-      const cursor = new Date(start.getTime())
-      while (cursor < end) {
-        if (cursor >= today && cursor < next30End) {
-          next30DaysSet.add(cursor.toISOString().slice(0, 10))
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    })
-    const next30OccupancyPercent = Math.min(100, Math.round((next30DaysSet.size / 30) * 100))
-
-    // Financial revenue calculation (Estimated based on reserved nights and monthly rates)
-    let totalRevenueUSD = 0
-    let totalNightsBooked = 0
-
-    confirmedEvents.forEach((evt) => {
-      const start = startOfDay(evt.start)
-      const end = startOfDay(evt.end)
-      const cursor = new Date(start.getTime())
-
-      while (cursor < end) {
-        const monthKey = String(cursor.getMonth() + 1)
-        const nightRate = property.quoterMonthlyRatesUSD?.[monthKey] ?? property.quoterMonthlyRatesUSD?.['default'] ?? 50
-        totalRevenueUSD += nightRate
-        totalNightsBooked++
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    })
-
-    // Add cleaning fees for confirmed reservations
-    const cleaningFeeTotalUSD = confirmedEvents.length * (property.quoterCleaningFeeUSD ?? 0)
-    totalRevenueUSD += cleaningFeeTotalUSD
-
-    const avgStayNights = totalBookingsCount > 0 ? (totalNightsBooked / totalBookingsCount).toFixed(1) : '0'
-
-    // Conversion rate
+  const stats = useMemo(() => {
     const publicViews = property.publicViewsCount ?? 0
-    const conversionRate = publicViews > 0 ? ((totalWebRequests / publicViews) * 100).toFixed(1) : '0'
+    const publicQuotes = property.publicQuotesCount ?? 0
+    const publicRequests = events.filter((e) => e.source === 'public')
+    const webRequestsCount = publicRequests.length
+    const webRequestsPending = publicRequests.filter((e) => e.status === 'pending').length
+    const webRequestsConfirmed = publicRequests.filter((e) => e.status === 'confirmed').length
+    const conversionRate = publicViews > 0 ? ((webRequestsCount / publicViews) * 100).toFixed(1) : '0.0'
+
+    const today = startOfDay(new Date())
+    const startOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const endOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    const next30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+    let thisMonthOccupied = 0
+    let next30Occupied = 0
+    const MS_IN_DAY = 24 * 60 * 60 * 1000
+    const activeEvents = events.filter((e) => e.status !== 'declined' && e.status !== 'pending')
+
+    for (let d = new Date(startOfThisMonth); d <= endOfThisMonth; d = new Date(d.getTime() + MS_IN_DAY)) {
+      if (activeEvents.some((e) => e.start <= d && e.end > d)) thisMonthOccupied++
+    }
+
+    for (let d = new Date(today); d < next30Days; d = new Date(d.getTime() + MS_IN_DAY)) {
+      if (activeEvents.some((e) => e.start <= d && e.end > d)) next30Occupied++
+    }
+
+    const thisMonthDays = endOfThisMonth.getDate()
+    const thisMonthOccPercent = Math.round((thisMonthOccupied / thisMonthDays) * 100)
+    const next30OccPercent = Math.round((next30Occupied / 30) * 100)
+
+    const confirmedEvents = activeEvents.filter((e) => e.status === 'confirmed')
+    let totalConfirmedNights = 0
+    let estimatedRevenueUSD = 0
+
+    confirmedEvents.forEach((ev) => {
+      const eStart = new Date(ev.start); const eEnd = new Date(ev.end)
+      let nights = 0
+      for (let cursor = new Date(eStart); cursor < eEnd; cursor.setDate(cursor.getDate() + 1)) {
+        nights++
+        const mKey = String(cursor.getMonth() + 1)
+        estimatedRevenueUSD += property.quoterMonthlyRatesUSD?.[mKey] ?? property.quoterMonthlyRatesUSD?.['default'] ?? 0
+      }
+      totalConfirmedNights += nights
+    })
+
+    const sourceCount = activeEvents.reduce((acc, ev) => {
+      const src = ev.source || 'manual'
+      acc[src] = (acc[src] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
 
     return {
-      publicViews,
-      publicQuotes: property.publicQuotesCount ?? 0,
-      totalWebRequests,
-      pendingWebRequests,
-      confirmedWebRequests,
-      declinedWebRequests,
-      airbnbBookings,
-      manualBookings,
-      webBookings,
-      totalBookingsCount,
-      monthOccupiedDays,
-      daysInMonth,
-      monthOccupancyPercent,
-      next30OccupancyPercent,
-      totalRevenueUSD,
-      totalNightsBooked,
-      avgStayNights,
-      conversionRate,
+      publicViews, publicQuotes, webRequestsCount, webRequestsPending, webRequestsConfirmed, conversionRate,
+      thisMonthOccPercent, thisMonthOccupied, thisMonthDays, next30OccPercent, next30Occupied,
+      totalConfirmedNights, avgStay: confirmedEvents.length > 0 ? (totalConfirmedNights / confirmedEvents.length).toFixed(1) : '0',
+      sourceCount, totalActiveEvents: activeEvents.length, estimatedRevenueUSD,
     }
   }, [events, property])
 
   return (
-    <div className="metrics-view">
-      <header className="metrics-header">
-        <div>
-          <h2>Métricas y Estadísticas</h2>
-          <p className="subtitle">
-            Rendimiento del alojamiento, tráfico web de la vista pública e indicadores clave.
-          </p>
-        </div>
-      </header>
+    <div className="metrics-layout animate-fade-in">
+      <div className="metrics-header">
+        <h2>{t('metricsTitle')}</h2>
+        <p>{t('metricsSubtitle')}</p>
+      </div>
 
-      {/* KPI Cards Grid */}
-      <div className="metrics-kpi-grid">
-        <div className="kpi-card kpi-card--views">
-          <div className="kpi-card__icon">👁️</div>
-          <div className="kpi-card__content">
-            <span className="kpi-card__label">Visitas a la Vista Pública</span>
-            <strong className="kpi-card__value">{metrics.publicViews}</strong>
-            <span className="kpi-card__subtext">Visitantes únicos en la web</span>
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-card__value">{stats.publicViews}</div>
+          <div className="metric-card__title">{t('metricsViews')}</div>
+          <div className="metric-card__sub">{t('metricsViewsSub')}</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card__value">{stats.publicQuotes}</div>
+          <div className="metric-card__title">{t('metricsQuotes')}</div>
+          <div className="metric-card__sub">{t('metricsQuotesSub')}</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card__value">{stats.webRequestsCount}</div>
+          <div className="metric-card__title">{t('metricsRequests')}</div>
+          <div className="metric-card__sub">
+            <span style={{ color: '#d97706' }}>{stats.webRequestsPending} {t('metricsPending')}</span> /{' '}
+            <span style={{ color: '#059669' }}>{stats.webRequestsConfirmed} {t('metricsConfirmed')}</span>
           </div>
         </div>
-
-        <div className="kpi-card kpi-card--quotes">
-          <div className="kpi-card__icon">🧮</div>
-          <div className="kpi-card__content">
-            <span className="kpi-card__label">Cotizaciones Calculadas</span>
-            <strong className="kpi-card__value">{metrics.publicQuotes}</strong>
-            <span className="kpi-card__subtext">Consultas de precio en el cotizador</span>
-          </div>
-        </div>
-
-        <div className="kpi-card kpi-card--requests">
-          <div className="kpi-card__icon">📩</div>
-          <div className="kpi-card__content">
-            <span className="kpi-card__label">Solicitudes Web</span>
-            <strong className="kpi-card__value">{metrics.totalWebRequests}</strong>
-            <span className="kpi-card__subtext">
-              {metrics.pendingWebRequests} pendientes · {metrics.confirmedWebRequests} confirmadas
-            </span>
-          </div>
-        </div>
-
-        <div className="kpi-card kpi-card--conversion">
-          <div className="kpi-card__icon">📈</div>
-          <div className="kpi-card__content">
-            <span className="kpi-card__label">Tasa de Conversión Web</span>
-            <strong className="kpi-card__value">{metrics.conversionRate}%</strong>
-            <span className="kpi-card__subtext">Solicitudes por cada 100 visitas</span>
-          </div>
+        <div className="metric-card">
+          <div className="metric-card__value">{stats.conversionRate}%</div>
+          <div className="metric-card__title">{t('metricsConversion')}</div>
+          <div className="metric-card__sub">{t('metricsConversionSub')}</div>
         </div>
       </div>
 
-      {/* Main Analysis Section */}
-      <div className="metrics-sections-grid">
-        {/* Occupancy Card */}
-        <section className="card metrics-card">
-          <h3>📅 Nivel de Ocupación</h3>
-          <p className="subtitle">Días ocupados según reservas y bloqueos confirmados.</p>
-
-          <div className="occupancy-display">
-            <div className="occupancy-metric">
-              <div className="occupancy-metric__header">
-                <span>Ocupación de este mes ({metrics.monthOccupiedDays} de {metrics.daysInMonth} días)</span>
-                <strong>{metrics.monthOccupancyPercent}%</strong>
+      <div className="metrics-sections">
+        <div className="metrics-section-card">
+          <h3>{t('metricsOccupancy')}</h3>
+          <p className="metrics-section-desc">{t('metricsOccupancySub')}</p>
+          <div className="progress-bars-container">
+            <div className="progress-item">
+              <div className="progress-item__header">
+                <span>{t('metricsThisMonth')}</span>
+                <strong>{stats.thisMonthOccPercent}%</strong>
               </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar__fill progress-bar__fill--primary"
-                  style={{ width: `${metrics.monthOccupancyPercent}%` }}
-                />
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${stats.thisMonthOccPercent}%` }} />
               </div>
+              <div className="progress-item__hint">{stats.thisMonthOccupied} / {stats.thisMonthDays} {t('metricsDays')}</div>
             </div>
-
-            <div className="occupancy-metric">
-              <div className="occupancy-metric__header">
-                <span>Ocupación próximos 30 días</span>
-                <strong>{metrics.next30OccupancyPercent}%</strong>
+            <div className="progress-item">
+              <div className="progress-item__header">
+                <span>{t('metricsNext30')}</span>
+                <strong>{stats.next30OccPercent}%</strong>
               </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar__fill progress-bar__fill--secondary"
-                  style={{ width: `${metrics.next30OccupancyPercent}%` }}
-                />
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${stats.next30OccPercent}%`, backgroundColor: '#3b82f6' }} />
               </div>
+              <div className="progress-item__hint">{stats.next30Occupied} / 30 {t('metricsDays')}</div>
             </div>
           </div>
-
-          <div className="occupancy-stats-footer">
-            <div className="stat-pill">
-              <span>Noches Totales Reservadas:</span>
-              <strong>{metrics.totalNightsBooked} noches</strong>
-            </div>
-            <div className="stat-pill">
-              <span>Promedio por Reserva:</span>
-              <strong>{metrics.avgStayNights} noches</strong>
-            </div>
+          <div className="metrics-summary-row" style={{ marginTop: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+            <span>{t('metricsNightsBooked')} <strong>{stats.totalConfirmedNights}</strong></span>
+            <span>{t('metricsAvgStay')} <strong>{stats.avgStay} {t('metricsDays')}</strong></span>
           </div>
-        </section>
+        </div>
 
-        {/* Channel Distribution Card */}
-        <section className="card metrics-card">
-          <h3>📊 Origen de Reservas</h3>
-          <p className="subtitle">Distribución de reservas por canal de procedencia.</p>
-
-          {metrics.totalBookingsCount === 0 ? (
-            <p className="empty-state-text">Aún no hay reservas registradas para generar el desglose por canal.</p>
+        <div className="metrics-section-card">
+          <h3>{t('metricsOrigin')}</h3>
+          <p className="metrics-section-desc">{t('metricsOriginSub')}</p>
+          {stats.totalActiveEvents === 0 ? (
+            <div className="empty-state-small">{t('metricsNoBookings')}</div>
           ) : (
-            <div className="channel-distribution">
-              <div className="channel-progress">
-                {metrics.airbnbBookings > 0 && (
-                  <div
-                    className="channel-progress__segment channel-progress__segment--airbnb"
-                    style={{ width: `${(metrics.airbnbBookings / metrics.totalBookingsCount) * 100}%` }}
-                    title={`Airbnb: ${metrics.airbnbBookings}`}
-                  />
-                )}
-                {metrics.manualBookings > 0 && (
-                  <div
-                    className="channel-progress__segment channel-progress__segment--manual"
-                    style={{ width: `${(metrics.manualBookings / metrics.totalBookingsCount) * 100}%` }}
-                    title={`Manual: ${metrics.manualBookings}`}
-                  />
-                )}
-                {metrics.webBookings > 0 && (
-                  <div
-                    className="channel-progress__segment channel-progress__segment--web"
-                    style={{ width: `${(metrics.webBookings / metrics.totalBookingsCount) * 100}%` }}
-                    title={`Web Pública: ${metrics.webBookings}`}
-                  />
-                )}
+            <div className="source-breakdown">
+              <div className="source-item">
+                <div className="source-item__label">
+                  <span className="source-dot" style={{ backgroundColor: '#ff5a5f' }} />
+                  {t('metricsAirbnb')}
+                </div>
+                <strong>{stats.sourceCount['airbnb'] || 0} {t('metricsReservations')}</strong>
               </div>
-
-              <ul className="channel-legend">
-                <li>
-                  <span className="legend-dot legend-dot--airbnb" />
-                  <span>Airbnb:</span>
-                  <strong>{metrics.airbnbBookings} reservas ({Math.round((metrics.airbnbBookings / metrics.totalBookingsCount) * 100)}%)</strong>
-                </li>
-                <li>
-                  <span className="legend-dot legend-dot--manual" />
-                  <span>Carga Manual:</span>
-                  <strong>{metrics.manualBookings} reservas ({Math.round((metrics.manualBookings / metrics.totalBookingsCount) * 100)}%)</strong>
-                </li>
-                <li>
-                  <span className="legend-dot legend-dot--web" />
-                  <span>Solicitudes Web:</span>
-                  <strong>{metrics.webBookings} reservas ({Math.round((metrics.webBookings / metrics.totalBookingsCount) * 100)}%)</strong>
-                </li>
-              </ul>
+              <div className="source-item">
+                <div className="source-item__label">
+                  <span className="source-dot" style={{ backgroundColor: '#64748b' }} />
+                  {t('metricsManual')}
+                </div>
+                <strong>{stats.sourceCount['manual'] || 0} {t('metricsReservations')}</strong>
+              </div>
+              <div className="source-item">
+                <div className="source-item__label">
+                  <span className="source-dot" style={{ backgroundColor: '#0ea5e9' }} />
+                  {t('metricsWeb')}
+                </div>
+                <strong>{stats.sourceCount['public'] || 0} {t('metricsReservations')}</strong>
+              </div>
             </div>
           )}
-        </section>
+        </div>
       </div>
 
-      {/* Revenue & Financial Estimation */}
-      <section className="card metrics-card revenue-card">
-        <div className="revenue-card__header">
-          <div>
-            <h3>💵 Ingresos Estimados por Reservas</h3>
-            <p className="subtitle">Estimación calculada a partir de las tarifas configuradas por mes y noches confirmadas.</p>
+      <div className="metrics-section-card metrics-section-card--revenue">
+        <h3>{t('metricsRevenue')}</h3>
+        <p className="metrics-section-desc">{t('metricsRevenueSub')}</p>
+        <div className="revenue-showcase">
+          <div className="revenue-main">
+            <span className="revenue-main__label">{t('metricsRevenueTotal')}</span>
+            <span className="revenue-main__value">{formatCurrency(stats.estimatedRevenueUSD, 'USD')}</span>
           </div>
-          <div className="revenue-main-badge">
-            <span className="revenue-label">Total Reservado (USD)</span>
-            <strong className="revenue-amount">{formatCurrency(metrics.totalRevenueUSD, 'USD')}</strong>
-          </div>
+          {rates && (
+            <div className="revenue-converted">
+              <div className="revenue-converted__item">
+                <span>{t('metricsPesos')}</span>
+                <strong>{formatCurrency(stats.estimatedRevenueUSD * rates.usdToArs, 'ARS')}</strong>
+              </div>
+              <div className="revenue-converted__item">
+                <span>{t('metricsReales')}</span>
+                <strong>{formatCurrency(stats.estimatedRevenueUSD * rates.usdToBrl, 'BRL')}</strong>
+              </div>
+            </div>
+          )}
         </div>
-
-        {rates && (
-          <div className="revenue-currencies-grid">
-            <div className="revenue-currency-box">
-              <span>Pesos Argentinos (ARS)</span>
-              <strong>{formatCurrency(metrics.totalRevenueUSD * rates.usdToArs, 'ARS')}</strong>
-              <small>1 USD = ${rates.usdToArs.toLocaleString('es-AR')}</small>
-            </div>
-            <div className="revenue-currency-box">
-              <span>Reales Brasileños (BRL)</span>
-              <strong>{formatCurrency(metrics.totalRevenueUSD * rates.usdToBrl, 'BRL')}</strong>
-              <small>1 USD = R$ {rates.usdToBrl.toFixed(2)}</small>
-            </div>
-          </div>
-        )}
-      </section>
+      </div>
     </div>
   )
 }
