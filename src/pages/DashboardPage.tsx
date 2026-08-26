@@ -65,6 +65,7 @@ const INITIAL_FORM = {
 export const DashboardPage = () => {
   const { user, signOut } = useAuth()
   const { showToast } = useToast()
+  const { t } = useLocale()
   const [properties, setProperties] = useState<PropertyDTO[]>([])
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,11 +96,11 @@ export const DashboardPage = () => {
         return data[0].id
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar las propiedades.')
+      setError(err instanceof Error ? err.message : t('workspaceLoadError'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void loadProperties()

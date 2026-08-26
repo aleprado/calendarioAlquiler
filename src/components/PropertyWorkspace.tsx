@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react'
 import type { EventProps, SlotInfo } from 'react-big-calendar'
 import { addMonths, format, startOfMonth } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es, ptBR, type Locale as DateFnsLocale } from 'date-fns/locale'
 import { EventFormModal } from './EventFormModal'
 import { EventDetailsModal } from './EventDetailsModal'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
@@ -12,6 +12,7 @@ import { MetricsView } from './MetricsView'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { getFirestoreDb } from '../lib/firebase'
 import { registerPushSubscriptionForProperty, showReservationRequestNotification } from '../services/notificationService'
+import { useLocale } from '../i18n/LocaleContext'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -47,20 +48,21 @@ const normalizeSlotSelection = (start: Date, end: Date) => {
   }
 }
 
-const getMonthLabel = (date: Date) => format(date, 'MMMM yyyy', { locale: es })
+const getMonthLabel = (date: Date, localeObj: DateFnsLocale) => format(date, 'MMMM yyyy', { locale: localeObj })
 
-const eventStatusLabel = (event: CalendarEvent) => {
-  if (event.status === 'confirmed') return 'Confirmado'
-  if (event.status === 'pending') return 'Pendiente'
-  if (event.status === 'tentative') return 'Tentativo'
-  return 'Declinado'
+const eventStatusLabel = (event: CalendarEvent, t: any) => {
+  if (event.status === 'confirmed') return t('eventDetailsStatusConfirmed')
+  if (event.status === 'pending') return t('eventDetailsPending')
+  if (event.status === 'tentative') return t('eventDetailsTentative')
+  return t('eventDetailsDeclined')
 }
 
-const eventCleaningLabel = (event: CalendarEvent) => {
-  if (event.status !== 'confirmed') return 'Limpieza N/A'
-  if (event.cleaningStatus === 'pending') return 'Limpieza pendiente'
-  if (event.cleaningStatus === 'done') return 'Limpieza lista'
-  return 'Limpieza sin definir'
+const eventCleaningLabel = (event: CalendarEvent, t: any) => {
+  if (event.status !== 'confirmed') return t('eventDetailsCleaningNone')
+
+  if (event.cleaningStatus === 'pending') return t('eventDetailsCleaningPending')
+  if (event.cleaningStatus === 'done') return t('eventDetailsCleaningDone')
+  return t('eventDetailsCleaningNone')
 }
 
 const eventSourceLabel = (event: CalendarEvent) => {
@@ -265,7 +267,9 @@ interface PropertyWorkspaceProps {
   onOpenSettings?: () => void
 }
 
-export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspaceProps) => {
+export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpenSettings }) => {
+  const { t, locale } = useLocale()
+  const dateFnsLocale = locale === 'pt' ? ptBR : es
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -738,3 +742,5 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
     </section>
   )
 }
+
+
