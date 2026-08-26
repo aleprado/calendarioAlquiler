@@ -349,7 +349,7 @@ export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpen
       } catch (error) {
         syncFailed = true
         if (active) {
-          setGlobalError(error instanceof Error ? error.message : 'No se pudo sincronizar con Airbnb.')
+          setGlobalError(error instanceof Error ? error.message : t('workspaceSyncError'))
         }
       }
       await loadEvents(syncFailed ? { skipClearError: true } : undefined)
@@ -610,51 +610,11 @@ export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpen
         </div>
       )}
 
+    <div className="property-workspace">
       {globalError && (
-        <div className="alert" role="alert">
+        <div className="alert" role="alert" style={{ marginBottom: '1rem' }}>
           <span>{globalError}</span>
           <button type="button" onClick={() => setGlobalError(null)}>
-            Cerrar
-          </button>
-        </div>
-      )}
-
-      <nav className="workspace-tabs" aria-label="Secciones de la propiedad">
-        <button
-          type="button"
-          className={`workspace-tab${activeTab === 'calendar' ? ' workspace-tab--active' : ''}`}
-          onClick={() => setActiveTab('calendar')}
-        >
-          <span className="workspace-tab__icon">📅</span>
-          <span>Calendario y Cotizador</span>
-        </button>
-        <button
-          type="button"
-          className={`workspace-tab${activeTab === 'metrics' ? ' workspace-tab--active' : ''}`}
-          onClick={() => setActiveTab('metrics')}
-        >
-          <span className="workspace-tab__icon">📊</span>
-          <span>Métricas y Estadísticas</span>
-        </button>
-      </nav>
-
-      {activeTab === 'metrics' ? (
-        <MetricsView property={property} events={events} />
-      ) : (
-        <>
-          <CotizadorWidget
-            mode="private"
-            monthlyRatesUSD={property.quoterMonthlyRatesUSD}
-            adminCommissionPercent={property.quoterAdminCommissionPercent}
-            cleaningFeeUSD={property.quoterCleaningFeeUSD}
-            customExchangeRates={property.quoterCustomExchangeRates}
-            checkInTime={property.defaultCheckInTime ?? '15:00'}
-            checkOutTime={property.defaultCheckOutTime ?? '11:00'}
-            onOpenSettings={onOpenSettings}
-          />
-
-          <div className="calendar-card">
-            <div className="calendar-card__toolbar">
               <button type="button" className="primary" onClick={handleOpenNewEventModal}>
                 Nuevo evento
               </button>

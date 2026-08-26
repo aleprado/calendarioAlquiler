@@ -1,65 +1,56 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import {
-  listProperties,
-  createProperty,
-  joinProperty,
-  resolveGoogleMapsLink as resolveGoogleMapsLinkApi,
-  importGooglePhotosAlbum as importGooglePhotosAlbumApi,
-} from '../api/properties'
-import type { PropertyDTO } from '../types'
-import { PropertyWorkspace } from '../components/PropertyWorkspace'
-import { PropertySettingsView } from '../components/PropertySettingsView'
 import { Logo } from '../components/Logo'
+import { PropertyWorkspace } from '../components/PropertyWorkspace'
+import { PropertySettings } from '../components/PropertySettings'
+import { createProperty, joinProperty, listProperties } from '../api/properties'
+import type { PropertyDTO } from '../types'
 import { useToast } from '../components/ToastNotification'
-
-const getPublicUrl = (property: PropertyDTO) => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}/public/${property.publicSlug}`
-}
-
-const getPublicCalendarUrl = (property: PropertyDTO) => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}/public/${property.publicSlug}/calendario`
-}
-
-
+import { useLocale } from '../i18n/LocaleContext'
+import { LanguageSelector } from '../components/LanguageSelector'
 
 const INITIAL_FORM = {
   name: '',
   airbnbIcalUrl: '',
   instagramUrl: '',
   googlePhotosUrl: '',
-  description: '',
+  defaultCheckInTime: '15:00',
+  defaultCheckOutTime: '11:00',
   locationLabel: '',
   googleMapsPinUrl: '',
-  googleMapsPlaceId: '',
   googleMapsLat: '',
   googleMapsLng: '',
-  showGoogleReviews: false,
-  googleMapsReviewsUrl: '',
-  galleryImageUrls: '',
-  instagramPostUrls: '',
-  showQuoterPublic: true,
-  quoterAdminCommissionPercent: '0',
-  quoterCleaningFeeUSD: '0',
+  googleMapsPlaceId: '',
+  description: '',
+  showQuoterPublic: false,
+  quoterAdminCommissionPercent: 0,
+  quoterCleaningFeeUSD: 0,
   quoterMonthlyRatesUSD: {
-    '1': '80',
-    '2': '80',
-    '3': '60',
-    '4': '50',
-    '5': '50',
-    '6': '50',
-    '7': '60',
-    '8': '60',
-    '9': '50',
-    '10': '50',
-    '11': '60',
-    '12': '80',
-  } as Record<string, string>,
-  customUsdToArs: '',
-  customUsdToBrl: '',
+    '1': 50,
+    '2': 50,
+    '3': 50,
+    '4': 50,
+    '5': 50,
+    '6': 50,
+    '7': 50,
+    '8': 50,
+    '9': 50,
+    '10': 50,
+    '11': 50,
+    '12': 50,
+    default: 50,
+  } as Record<string, number>,
+  quoterCustomExchangeRates: {
+    usdToArs: null as number | null,
+    usdToBrl: null as number | null,
+    lastUpdatedAt: null as string | null,
+    source: 'live' as 'live' | 'custom' | 'fallback',
+  },
+  quoterCustomExchangeRatesInputs: {
+    usdToArs: '',
+    usdToBrl: '',
+  },
 }
 
 export const DashboardPage = () => {
@@ -87,12 +78,8 @@ export const DashboardPage = () => {
       const data = await listProperties()
       setProperties(data)
       setSelectedPropertyId((prev) => {
-        if (data.length === 0) {
-          return null
-        }
-        if (prev && data.some((property) => property.id === prev)) {
-          return prev
-        }
+        if (data.length === 0) return null
+        if (prev && data.some((property) => property.id === prev)) return prev
         return data[0].id
       })
     } catch (err) {
@@ -111,8 +98,6 @@ export const DashboardPage = () => {
     [properties, selectedPropertyId],
   )
 
-
-
   const handleCreateProperty = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsCreating(true)
@@ -130,9 +115,9 @@ export const DashboardPage = () => {
       setProperties((prev) => [...prev, created])
       setSelectedPropertyId(created.id)
       setCreateForm(INITIAL_FORM)
-      showToast('Propiedad creada exitosamente', 'success')
+      showToast(t('dashCreatePropSuccess'), 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear la propiedad.')
+      setError(err instanceof Error ? err.message : t('dashCreatePropError'))
     } finally {
       setIsCreating(false)
     }
@@ -140,322 +125,237 @@ export const DashboardPage = () => {
 
   const handleCopyPublicLink = async () => {
     if (!selectedProperty) return
+    const url = `${window.location.origin}/public/${selectedProperty.publicSlug}`
     try {
-      await navigator.clipboard.writeText(getPublicUrl(selectedProperty))
-      showToast('Link público copiado al portapapeles', 'success')
-      setIsPropertyMenuOpen(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo copiar el link. Copialo manualmente.')
+      await navigator.clipboard.writeText(url)
+      showToast('Link copiado al portapapeles', 'success')
+    } catch {
+      showToast('No se pudo copiar el link', 'error')
     }
   }
 
-  const handleCopyShareCode = async () => {
-    if (!selectedProperty) return
-    try {
-      await navigator.clipboard.writeText(selectedProperty.shareCode)
-      showToast('Código de acceso copiado', 'success')
-      setIsPropertyMenuOpen(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo copiar el código. Copialo manualmente.')
-    }
-  }
-
-  const handleCopyCalendarLink = async () => {
-    if (!selectedProperty) return
-    try {
-      await navigator.clipboard.writeText(getPublicCalendarUrl(selectedProperty))
-      showToast('Link del calendario copiado', 'success')
-      setIsPropertyMenuOpen(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo copiar el link del calendario. Copialo manualmente.')
-    }
-  }
-
-  const openJoinModal = () => {
-    setJoinCode('')
-    setJoinError(null)
-    setIsJoinModalOpen(true)
-  }
-
-  const closeJoinModal = () => {
-    if (isJoining) return
-    setIsJoinModalOpen(false)
-    setJoinError(null)
-    setJoinCode('')
-  }
-
-  const handleJoinProperty = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const normalizedCode = joinCode.trim()
-    if (!normalizedCode) {
-      setJoinError('Necesitas ingresar un código.')
-      return
-    }
-
+  const handleJoinProperty = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!joinCode.trim()) return
     setIsJoining(true)
     setJoinError(null)
     try {
-      const joined = await joinProperty({ code: normalizedCode })
-      setProperties((prev) => {
-        const exists = prev.some((property) => property.id === joined.id)
-        if (exists) {
-          return prev.map((property) => (property.id === joined.id ? joined : property))
-        }
-        return [...prev, joined]
-      })
-      setSelectedPropertyId(joined.id)
+      await joinProperty(joinCode.trim())
+      await loadProperties()
       setIsJoinModalOpen(false)
       setJoinCode('')
+      showToast(t('dashJoinSuccess'), 'success')
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'No se pudo unir la propiedad con ese código.')
+      setJoinError(err instanceof Error ? err.message : 'Error')
     } finally {
       setIsJoining(false)
     }
   }
 
-
-
-  const togglePropertyMenu = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    setIsPropertyMenuOpen((prev) => !prev)
-  }
-
-  useEffect(() => {
-    const closeMenu = () => setIsPropertyMenuOpen(false)
-    if (isPropertyMenuOpen) {
-      window.addEventListener('click', closeMenu)
-    }
-    return () => {
-      window.removeEventListener('click', closeMenu)
-    }
-  }, [isPropertyMenuOpen])
-
   return (
     <div className="dashboard-layout">
-      <header className="dashboard-topbar">
-        <div className="topbar-left">
-          <Logo size="sm" />
-          <button type="button" className="link-button topbar-info-link" onClick={() => setIsInfoOpen(true)}>
-            Conoce la app
-          </button>
+      <header className="dashboard-header">
+        <div className="dashboard-header__brand">
+          <Logo size="sm" showText={false} className="dashboard-logo-only" />
+          <h1 className="dashboard-title">
+            <span className="dashboard-title__desktop">{t('dashMyProperties')}</span>
+          </h1>
         </div>
-        <div className="topbar-right">
-          <button type="button" className="link-button sign-out-button" onClick={() => void signOut()} aria-label="Cerrar sesión">
-            <svg
-              className="sign-out-button__icon"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15" />
-              <path d="M18 12H9" />
-              <path d="m15 9 3 3-3 3" />
-            </svg>
-            <span className="sign-out-button__label">Cerrar sesión</span>
-          </button>
-          <div className="user-info">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName ?? user.email ?? 'Usuario'} className="user-avatar" />
-            ) : (
-              <div className="user-avatar fallback">SA</div>
-            )}
-          </div>
-          {selectedProperty && (
-            <div className="property-switcher" onClick={(event) => event.stopPropagation()}>
-              <button type="button" className="secondary property-switcher__btn" onClick={togglePropertyMenu}>
-                <span className="property-switcher__label">{selectedProperty.name}</span>
-                <span className="property-switcher__chevron">▾</span>
-              </button>
-              {isPropertyMenuOpen && (
-                <div className="property-menu">
-                  <div className="property-menu__group">
-                    {properties.map((property) => (
-                      <button
-                        key={property.id}
-                        type="button"
-                        className={`property-menu__item${property.id === selectedPropertyId ? ' property-menu__item--active' : ''}`}
-                        onClick={() => {
-                          setSelectedPropertyId(property.id)
-                          setIsPropertyMenuOpen(false)
-                        }}
-                      >
-                        {property.name}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="property-menu__group property-menu__group--actions">
-                    <button type="button" className="property-menu__item" onClick={handleCopyPublicLink}>
-                      Copiar link público
-                    </button>
-                    <button type="button" className="property-menu__item" onClick={handleCopyCalendarLink}>
-                      Copiar link de calendario
-                    </button>
-                    <button type="button" className="property-menu__item" onClick={handleCopyShareCode}>
-                      Copiar código de acceso
-                    </button>
-                    <button
-                      type="button"
-                      className="property-menu__item"
-                      onClick={() => {
-                        setActiveView('settings')
-                        setIsPropertyMenuOpen(false)
-                      }}
-                    >
-                      Configuración de la propiedad
-                    </button>
-                    <button
-                      type="button"
-                      className="property-menu__item"
-                      onClick={() => {
-                        setIsPropertyMenuOpen(false)
-                        openJoinModal()
-                      }}
-                    >
-                      Agregar propiedad con código
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
 
-      <main className="dashboard-main">
-        {error && (
-          <div className="alert" role="alert">
-            <span>{error}</span>
-            <button type="button" onClick={() => setError(null)}>
-              Cerrar
+        {properties.length > 0 && (
+          <div className="property-switcher-container">
+            <button
+              type="button"
+              className="property-switcher"
+              onClick={() => setIsPropertyMenuOpen(!isPropertyMenuOpen)}
+              aria-expanded={isPropertyMenuOpen}
+            >
+              <span className="property-switcher__text">
+                {selectedProperty?.name ?? t('dashSelectProp')}
+              </span>
+              <span className="property-switcher__icon" aria-hidden="true">
+                ▼
+              </span>
             </button>
+
+            {isPropertyMenuOpen && (
+              <div className="property-switcher-menu">
+                {properties.map((prop) => (
+                  <button
+                    key={prop.id}
+                    type="button"
+                    className={`property-switcher-menu__item${prop.id === selectedPropertyId ? ' active' : ''}`}
+                    onClick={() => {
+                      setSelectedPropertyId(prop.id)
+                      setIsPropertyMenuOpen(false)
+                      setActiveView('workspace')
+                    }}
+                  >
+                    {prop.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {loading ? (
-          <div className="loading">Cargando tus propiedades...</div>
-        ) : properties.length === 0 ? (
-          <section className="card">
-            <h2>Registra tu primera propiedad</h2>
-            <p>Necesitamos el enlace iCal de Airbnb para mantener el calendario sincronizado.</p>
-            <form className="property-form" onSubmit={handleCreateProperty}>
-              <label htmlFor="property-name">Nombre</label>
-              <input
-                id="property-name"
-                type="text"
-                value={createForm.name}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Ej. Casa del centro"
-                required
-              />
-              <label htmlFor="property-ical">Enlace iCal de Airbnb</label>
-              <input
-                id="property-ical"
-                type="url"
-                value={createForm.airbnbIcalUrl}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, airbnbIcalUrl: event.target.value }))}
-                placeholder="https://www.airbnb.com/calendar/ical/..."
-                required
-              />
-              <label htmlFor="property-instagram-link">Instagram (URL opcional)</label>
-              <input
-                id="property-instagram-link"
-                type="url"
-                value={createForm.instagramUrl}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
-                placeholder="https://instagram.com/tu_cuenta"
-              />
-              <label htmlFor="property-google-photos-link">Google Fotos (URL opcional)</label>
-              <input
-                id="property-google-photos-link"
-                type="url"
-                value={createForm.googlePhotosUrl}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))}
-                placeholder="https://photos.app.goo.gl/tu_album"
-              />
-              <button type="submit" className="primary" disabled={isCreating}>
-                {isCreating ? 'Guardando...' : 'Guardar propiedad'}
-              </button>
-            </form>
-            <button type="button" className="link-button" onClick={openJoinModal}>
-              Tengo un código de acceso
-            </button>
-          </section>
-        ) : activeView === 'settings' && selectedProperty ? (
-          <PropertySettingsView
-            property={selectedProperty}
-            onBack={() => setActiveView('workspace')}
-            onPropertyUpdated={(updated) => {
-              setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-            }}
-            onImportGooglePhotos={(url) => importGooglePhotosAlbumApi(url).then((res) => res.images)}
-            onResolveMapLink={(url) =>
-              resolveGoogleMapsLinkApi(url).then((res) => ({
-                placeId: res.googleMapsPlaceId ?? undefined,
-                lat: res.googleMapsLat !== null ? String(res.googleMapsLat) : undefined,
-                lng: res.googleMapsLng !== null ? String(res.googleMapsLng) : undefined,
-              }))
-            }
-          />
-        ) : selectedProperty ? (
-          <PropertyWorkspace property={selectedProperty} onOpenSettings={() => setActiveView('settings')} />
-        ) : null}
-      </main>
+        <div className="dashboard-header__user">
+          <LanguageSelector />
+          <button type="button" className="secondary btn-sm" onClick={signOut}>
+            {t('dashSignOut')}
+          </button>
+        </div>
+      </header>
 
-      {isInfoOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal modal--info" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
-            <h2 id="about-modal-title">¿Qué es Simple Alquiler?</h2>
-            <p>
-              Gestionamos tus alojamientos turísticos desde un único panel: sincronización automática con Airbnb, bloqueos manuales y un enlace público para recibir reservas sin compartir tu panel privado.
-            </p>
-            <p>
-              ¿Te interesa implementar Simple Alquiler? Contáctanos por{' '}
-              <a href="https://wa.me/5492364261382" target="_blank" rel="noopener noreferrer">
-                WhatsApp (+54 236 426-1382)
-              </a>
-              .
-            </p>
-            <button type="button" className="primary" onClick={() => setIsInfoOpen(false)}>
-              Cerrar
-            </button>
-          </div>
+      {error && (
+        <div className="alert" role="alert" style={{ margin: '1rem clamp(1rem, 5vw, 4rem)' }}>
+          <span>{error}</span>
         </div>
       )}
 
+      {loading ? (
+        <div className="loading">{t('loading')}</div>
+      ) : properties.length === 0 ? (
+        <div className="empty-state">
+          <div className="card">
+            <h2>{t('dashRegisterFirst')}</h2>
+            <p>{t('dashCreatePropDesc')}</p>
+            <form onSubmit={handleCreateProperty} className="modal-form" style={{ marginTop: '2rem' }}>
+              <label htmlFor="prop-name">{t('dashPropName')}</label>
+              <input
+                id="prop-name"
+                type="text"
+                required
+                placeholder={t('dashPropNamePlaceholder')}
+                value={createForm.name}
+                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                disabled={isCreating}
+              />
+              <label htmlFor="prop-ical">{t('dashAirbnbUrl')}</label>
+              <input
+                id="prop-ical"
+                type="url"
+                placeholder={t('dashAirbnbUrlPlaceholder')}
+                value={createForm.airbnbIcalUrl}
+                onChange={(e) => setCreateForm((f) => ({ ...f, airbnbIcalUrl: e.target.value }))}
+                disabled={isCreating}
+              />
+              <button type="submit" className="primary" disabled={isCreating} style={{ marginTop: '1rem' }}>
+                {isCreating ? t('dashCreatingProp') : t('dashCreatePropBtn')}
+              </button>
+            </form>
+
+            <div className="dashboard-join-section">
+              <h3 className="dashboard-join-section__title">{t('dashJoinTitle')}</h3>
+              <p className="dashboard-join-section__desc">{t('dashJoinDesc')}</p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setIsJoinModalOpen(true)}
+                disabled={isCreating}
+              >
+                {t('dashJoinBtn')}
+              </button>
+            </div>
+          </div>
+
+          <div className="welcome-card card">
+            <h2 className="welcome-card__title">
+              <span aria-hidden="true">👋</span> {t('dashWelcomeCardTitle')}
+            </h2>
+            <p className="welcome-card__desc">{t('dashWelcomeCardDesc')}</p>
+            <ul className="welcome-card__features">
+              <li>{t('dashWelcomeFeatures').split('\n')[0]}</li>
+              <li>{t('dashWelcomeFeatures').split('\n')[1]}</li>
+              <li>{t('dashWelcomeFeatures').split('\n')[2]}</li>
+              <li>{t('dashWelcomeFeatures').split('\n')[3]}</li>
+            </ul>
+          </div>
+        </div>
+      ) : selectedProperty ? (
+        <main className="dashboard-main">
+          <div className="property-dashboard-header">
+            <div className="property-dashboard-nav">
+              <button
+                type="button"
+                className={`tab-btn${activeView === 'workspace' ? ' active' : ''}`}
+                onClick={() => setActiveView('workspace')}
+              >
+                {t('dashManageProp')}
+              </button>
+              <button
+                type="button"
+                className={`tab-btn${activeView === 'settings' ? ' active' : ''}`}
+                onClick={() => setActiveView('settings')}
+              >
+                {t('dashSettingsProp')}
+              </button>
+            </div>
+            <div className="property-dashboard-actions">
+              <Link
+                className="secondary btn-sm"
+                to={`/public/${selectedProperty.publicSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('dashViewPublicPage')}
+              </Link>
+              <button type="button" className="secondary btn-sm" onClick={handleCopyPublicLink}>
+                {t('dashCopyPublicLink')}
+              </button>
+            </div>
+          </div>
+
+          {activeView === 'workspace' ? (
+            <PropertyWorkspace
+              key={`ws-${selectedProperty.id}`}
+              property={selectedProperty}
+              onOpenSettings={() => setActiveView('settings')}
+            />
+          ) : (
+            <PropertySettings
+              key={`set-${selectedProperty.id}`}
+              property={selectedProperty}
+              onUpdated={loadProperties}
+            />
+          )}
+        </main>
+      ) : null}
+
       {isJoinModalOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="join-property-title">
-            <h2 id="join-property-title">Agregar propiedad con código</h2>
-            <form className="modal-form" onSubmit={handleJoinProperty}>
-              <label htmlFor="join-code">Código de acceso</label>
+        <div className="modal-backdrop" role="presentation" onClick={() => !isJoining && setIsJoinModalOpen(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="join-modal-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="join-modal-title">{t('dashJoinModalTitle')}</h2>
+            <p>{t('dashJoinModalDesc')}</p>
+            <form onSubmit={handleJoinProperty} className="modal-form">
+              <label htmlFor="join-code">{t('dashJoinInputCode')}</label>
               <input
                 id="join-code"
                 type="text"
-                value={joinCode}
-                onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                placeholder="ABCD1234"
-                autoFocus
                 required
+                placeholder={t('dashJoinInputCodePlaceholder')}
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                disabled={isJoining}
+                maxLength={6}
+                style={{ textTransform: 'uppercase', letterSpacing: '2px', textAlign: 'center', fontSize: '1.25rem' }}
               />
-              <button type="submit" className="primary" disabled={isJoining}>
-                {isJoining ? 'Agregando...' : 'Agregar propiedad'}
-              </button>
+
               {joinError && (
-                <div className="alert alert--inline" role="alert">
+                <div className="modal-errors" role="alert">
                   <span>{joinError}</span>
                 </div>
               )}
+
+              <div className="modal-actions">
+                <button type="button" className="secondary" onClick={() => setIsJoinModalOpen(false)} disabled={isJoining}>
+                  {t('dashJoinCancel')}
+                </button>
+                <button type="submit" className="primary" disabled={isJoining || joinCode.length < 5}>
+                  {isJoining ? t('dashJoinSubmitting') : t('dashJoinSubmit')}
+                </button>
+              </div>
             </form>
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={closeJoinModal} disabled={isJoining}>
-                Cancelar
-              </button>
-            </div>
           </div>
         </div>
       )}
