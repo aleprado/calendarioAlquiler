@@ -7,6 +7,7 @@ interface CotizadorWidgetProps {
   adminCommissionPercent?: number
   cleaningFeeUSD?: number
   customExchangeRates?: { usdToArs?: number; usdToBrl?: number } | null
+  blockedEvents?: { start: string; end: string }[]
   onOpenSettings?: () => void
 }
 
@@ -50,6 +51,7 @@ export const CotizadorWidget = ({
   adminCommissionPercent = 0,
   cleaningFeeUSD = 0,
   customExchangeRates,
+  blockedEvents = [],
   onOpenSettings,
 }: CotizadorWidgetProps) => {
   const today = new Date()
@@ -115,6 +117,22 @@ export const CotizadorWidget = ({
       cursor.setDate(cursor.getDate() + 1)
     }
 
+    let blockedNightCount = 0
+    if (blockedEvents && blockedEvents.length > 0) {
+      for (const n of nights) {
+        const time = n.date.getTime()
+        const isBlocked = blockedEvents.some((evt) => {
+          const s = new Date(evt.start).getTime()
+          const e = new Date(evt.end).getTime()
+          return time >= s && time < e
+        })
+        if (isBlocked) {
+          blockedNightCount++
+        }
+      }
+    }
+
+    const hasBlockedConflict = blockedNightCount > 0
     const baseStayUSD = nights.reduce((acc, curr) => acc + curr.nightRateUSD, 0)
     const commissionUSD = mode === 'private' && adminCommissionPercent > 0 ? baseStayUSD * (adminCommissionPercent / 100) : 0
     const cleaningUSD = mode === 'private' && cleaningFeeUSD > 0 ? cleaningFeeUSD : 0
@@ -133,8 +151,10 @@ export const CotizadorWidget = ({
       cleaningUSD,
       totalUSD,
       avgNightUSD,
+      hasBlockedConflict,
+      blockedNightCount,
     }
-  }, [startDateStr, endDateStr, monthlyRatesUSD, mode, adminCommissionPercent, cleaningFeeUSD])
+  }, [startDateStr, endDateStr, monthlyRatesUSD, mode, adminCommissionPercent, cleaningFeeUSD, blockedEvents])
 
   const converted = useMemo(() => {
     if (!calculation || !rates) return null
@@ -211,11 +231,25 @@ export const CotizadorWidget = ({
         <div className="alert alert--inline" role="alert">
           Selecciona una fecha de salida posterior a la fecha de llegada.
         </div>
+      ) : calculation.hasBlockedConflict ? (
+        <div className="cotizador-blocked-alert" role="alert">
+          <div className="cotizador-blocked-alert__icon">⛔</div>
+          <div className="cotizador-blocked-alert__info">
+            <strong>Fechas No Disponibles</strong>
+            <p>
+              El rango seleccionado (del {formatDateLocal(calculation.startDate)} al {formatDateLocal(calculation.endDate)}) incluye{' '}
+              <strong>
+                {calculation.blockedNightCount} {calculation.blockedNightCount === 1 ? 'noche ocupada' : 'noches ocupadas'}
+              </strong>{' '}
+              en el calendario de reservas. Consulta el calendario más abajo para elegir fechas libres.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="cotizador-results">
           <div className="cotizador-summary-header">
-            <span className="cotizador-nights-badge">
-              {calculation.totalNights} {calculation.totalNights === 1 ? 'noche' : 'noches'}
+            <span className="cotizador-nights-badge cotizador-nights-badge--available">
+              ✓ {calculation.totalNights} {calculation.totalNights === 1 ? 'noche disponible' : 'noches disponibles'}
             </span>
           </div>
 

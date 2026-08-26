@@ -2488,13 +2488,45 @@ a.danger {
   cursor: pointer;
 }
 
-.settings-actions-footer {
+/* ==================== Cotizador Availability Conflict Alert ==================== */
+.cotizador-blocked-alert {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  background: #fef2f2;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left: 5px solid #ef4444;
+  border-radius: var(--radius-sm);
+  padding: 1.1rem 1.3rem;
+  margin-top: 1rem;
+  color: #991b1b;
 }
+
+.cotizador-blocked-alert__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.cotizador-blocked-alert__info strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: #991b1b;
+}
+
+.cotizador-blocked-alert__info p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #7f1d1d;
+  line-height: 1.45;
+}
+
+.cotizador-nights-badge--available {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
 
 
 

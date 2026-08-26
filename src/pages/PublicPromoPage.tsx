@@ -203,6 +203,7 @@ export const PublicPromoPage = () => {
                 mode="public"
                 monthlyRatesUSD={data.quoterMonthlyRatesUSD}
                 customExchangeRates={data.quoterCustomExchangeRates}
+                blockedEvents={data.events}
               />
             </section>
           )}
