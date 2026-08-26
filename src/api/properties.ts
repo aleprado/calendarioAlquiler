@@ -82,3 +82,38 @@ export const importGooglePhotosAlbum = async (url: string, limit = 100): Promise
 
   return data.imported
 }
+
+export const parseGoogleMapsPin = (pinUrl: string): { placeId?: string; lat?: string; lng?: string } => {
+  const trimmed = pinUrl.trim()
+  if (!trimmed) return {}
+  try {
+    const url = new URL(trimmed)
+    const q = url.searchParams.get('q') ?? url.searchParams.get('query') ?? ''
+    const placeId = url.searchParams.get('query_place_id') ?? (q.startsWith('place_id:') ? q.replace('place_id:', '') : '')
+
+    const atCoords = url.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+    if (atCoords) {
+      return {
+        placeId: placeId || undefined,
+        lat: atCoords[1],
+        lng: atCoords[2],
+      }
+    }
+
+    const queryCoords = q.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+    if (queryCoords) {
+      return {
+        placeId: placeId || undefined,
+        lat: queryCoords[1],
+        lng: queryCoords[2],
+      }
+    }
+
+    return {
+      placeId: placeId || undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+

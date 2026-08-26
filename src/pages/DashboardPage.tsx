@@ -4,13 +4,13 @@ import { useAuth } from '../auth/useAuth'
 import {
   listProperties,
   createProperty,
-  updateProperty,
   joinProperty,
   resolveGoogleMapsLink as resolveGoogleMapsLinkApi,
   importGooglePhotosAlbum as importGooglePhotosAlbumApi,
 } from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
+import { PropertySettingsView } from '../components/PropertySettingsView'
 import { Logo } from '../components/Logo'
 import { useToast } from '../components/ToastNotification'
 
@@ -24,52 +24,7 @@ const getPublicCalendarUrl = (property: PropertyDTO) => {
   return `${origin}/public/${property.publicSlug}/calendario`
 }
 
-const parseUrlList = (value: string) =>
-  value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
 
-const parseOptionalCoordinate = (value: string) => {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const parsed = Number(trimmed)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const parseGoogleMapsPin = (pinUrl: string): { placeId?: string; lat?: string; lng?: string } => {
-  const trimmed = pinUrl.trim()
-  if (!trimmed) return {}
-  try {
-    const url = new URL(trimmed)
-    const q = url.searchParams.get('q') ?? url.searchParams.get('query') ?? ''
-    const placeId = url.searchParams.get('query_place_id') ?? (q.startsWith('place_id:') ? q.replace('place_id:', '') : '')
-
-    const atCoords = url.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
-    if (atCoords) {
-      return {
-        placeId: placeId || undefined,
-        lat: atCoords[1],
-        lng: atCoords[2],
-      }
-    }
-
-    const queryCoords = q.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
-    if (queryCoords) {
-      return {
-        placeId: placeId || undefined,
-        lat: queryCoords[1],
-        lng: queryCoords[2],
-      }
-    }
-
-    return {
-      placeId: placeId || undefined,
-    }
-  } catch {
-    return {}
-  }
-}
 
 const INITIAL_FORM = {
   name: '',
@@ -118,19 +73,11 @@ export const DashboardPage = () => {
   const [createForm, setCreateForm] = useState(INITIAL_FORM)
   const [isPropertyMenuOpen, setIsPropertyMenuOpen] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editForm, setEditForm] = useState(INITIAL_FORM)
-  const [isSavingEdit, setIsSavingEdit] = useState(false)
-  const [editError, setEditError] = useState<string | null>(null)
-  const [isResolvingMapLink, setIsResolvingMapLink] = useState(false)
-  const [mapResolveFeedback, setMapResolveFeedback] = useState<string | null>(null)
-  const [isImportingGooglePhotos, setIsImportingGooglePhotos] = useState(false)
-  const [photosImportFeedback, setPhotosImportFeedback] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'workspace' | 'settings'>('workspace')
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'cotizador' | 'general' | 'gallery' | 'channels'>('cotizador')
 
   const loadProperties = useCallback(async () => {
     setLoading(true)
@@ -163,42 +110,7 @@ export const DashboardPage = () => {
     [properties, selectedPropertyId],
   )
 
-  useEffect(() => {
-    if (selectedProperty) {
-      const rates = selectedProperty.quoterMonthlyRatesUSD ?? {}
-      const monthMap: Record<string, string> = {}
-      for (let m = 1; m <= 12; m++) {
-        const k = String(m)
-        monthMap[k] = rates[k] !== undefined ? String(rates[k]) : INITIAL_FORM.quoterMonthlyRatesUSD[k] ?? '1000'
-      }
 
-      setEditForm({
-        name: selectedProperty.name,
-        airbnbIcalUrl: selectedProperty.airbnbIcalUrl,
-        instagramUrl: selectedProperty.instagramUrl ?? '',
-        googlePhotosUrl: selectedProperty.googlePhotosUrl ?? '',
-        description: selectedProperty.description ?? '',
-        locationLabel: selectedProperty.locationLabel ?? '',
-        googleMapsPinUrl: selectedProperty.googleMapsPinUrl ?? '',
-        googleMapsPlaceId: selectedProperty.googleMapsPlaceId ?? '',
-        googleMapsLat: selectedProperty.googleMapsLat !== null ? String(selectedProperty.googleMapsLat) : '',
-        googleMapsLng: selectedProperty.googleMapsLng !== null ? String(selectedProperty.googleMapsLng) : '',
-        showGoogleReviews: selectedProperty.showGoogleReviews === true,
-        googleMapsReviewsUrl: selectedProperty.googleMapsReviewsUrl ?? '',
-        galleryImageUrls: selectedProperty.galleryImageUrls.join('\n'),
-        instagramPostUrls: selectedProperty.instagramPostUrls.join('\n'),
-        showQuoterPublic: selectedProperty.showQuoterPublic !== false,
-        quoterAdminCommissionPercent: String(selectedProperty.quoterAdminCommissionPercent ?? 0),
-        quoterCleaningFeeUSD: String(selectedProperty.quoterCleaningFeeUSD ?? 0),
-        quoterMonthlyRatesUSD: monthMap,
-        customUsdToArs: selectedProperty.quoterCustomExchangeRates?.usdToArs ? String(selectedProperty.quoterCustomExchangeRates.usdToArs) : '',
-        customUsdToBrl: selectedProperty.quoterCustomExchangeRates?.usdToBrl ? String(selectedProperty.quoterCustomExchangeRates.usdToBrl) : '',
-      })
-      setEditError(null)
-      setMapResolveFeedback(null)
-      setPhotosImportFeedback(null)
-    }
-  }, [selectedProperty])
 
   const handleCreateProperty = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -300,166 +212,7 @@ export const DashboardPage = () => {
     }
   }
 
-  const handleSaveEdit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!selectedProperty) return
-    setIsSavingEdit(true)
-    setEditError(null)
-    try {
-      const trimmedInstagramUrl = editForm.instagramUrl.trim()
-      const trimmedGoogleUrl = editForm.googlePhotosUrl.trim()
-      const trimmedDescription = editForm.description.trim()
-      const trimmedLocationLabel = editForm.locationLabel.trim()
-      const trimmedPinUrl = editForm.googleMapsPinUrl.trim()
-      const trimmedPlaceId = editForm.googleMapsPlaceId.trim()
-      const trimmedReviewsUrl = editForm.googleMapsReviewsUrl.trim()
-      const parsedLat = parseOptionalCoordinate(editForm.googleMapsLat)
-      const parsedLng = parseOptionalCoordinate(editForm.googleMapsLng)
 
-      let effectivePlaceId = trimmedPlaceId || null
-      let effectiveLat = parsedLat
-      let effectiveLng = parsedLng
-      let effectiveLocationLabel = trimmedLocationLabel || null
-
-      if (trimmedPinUrl && !effectivePlaceId && effectiveLat === null && effectiveLng === null) {
-        try {
-          const resolved = await resolveGoogleMapsLinkApi(trimmedPinUrl)
-          effectivePlaceId = resolved.googleMapsPlaceId ?? effectivePlaceId
-          effectiveLat = resolved.googleMapsLat ?? effectiveLat
-          effectiveLng = resolved.googleMapsLng ?? effectiveLng
-          effectiveLocationLabel = resolved.locationLabel ?? effectiveLocationLabel
-          setMapResolveFeedback('Pin detectado automáticamente al guardar.')
-          setEditForm((prev) => ({
-            ...prev,
-            googleMapsPinUrl: resolved.resolvedUrl || prev.googleMapsPinUrl,
-            googleMapsPlaceId: resolved.googleMapsPlaceId ?? prev.googleMapsPlaceId,
-            googleMapsLat: resolved.googleMapsLat !== null ? String(resolved.googleMapsLat) : prev.googleMapsLat,
-            googleMapsLng: resolved.googleMapsLng !== null ? String(resolved.googleMapsLng) : prev.googleMapsLng,
-            locationLabel: resolved.locationLabel ?? prev.locationLabel,
-          }))
-        } catch {
-          // Keep manual data if automatic resolution fails.
-        }
-      }
-
-      const parsedMonthlyRates: Record<string, number> = {}
-      for (let m = 1; m <= 12; m++) {
-        const k = String(m)
-        const val = Number(editForm.quoterMonthlyRatesUSD[k] ?? 0)
-        parsedMonthlyRates[k] = Number.isFinite(val) && val >= 0 ? val : 0
-      }
-
-      const customArs = editForm.customUsdToArs ? Number(editForm.customUsdToArs) : undefined
-      const customBrl = editForm.customUsdToBrl ? Number(editForm.customUsdToBrl) : undefined
-      const customRates = (customArs && customArs > 0) || (customBrl && customBrl > 0)
-        ? { usdToArs: customArs, usdToBrl: customBrl }
-        : null
-
-      const updated = await updateProperty(selectedProperty.id, {
-        name: editForm.name.trim(),
-        airbnbIcalUrl: editForm.airbnbIcalUrl.trim(),
-        instagramUrl: trimmedInstagramUrl ? trimmedInstagramUrl : null,
-        googlePhotosUrl: trimmedGoogleUrl ? trimmedGoogleUrl : null,
-        description: trimmedDescription ? trimmedDescription : null,
-        locationLabel: effectiveLocationLabel,
-        googleMapsPinUrl: trimmedPinUrl ? trimmedPinUrl : null,
-        googleMapsPlaceId: effectivePlaceId,
-        googleMapsLat: effectiveLat,
-        googleMapsLng: effectiveLng,
-        showGoogleReviews: editForm.showGoogleReviews,
-        googleMapsReviewsUrl: trimmedReviewsUrl ? trimmedReviewsUrl : null,
-        galleryImageUrls: parseUrlList(editForm.galleryImageUrls),
-        instagramPostUrls: parseUrlList(editForm.instagramPostUrls),
-        showQuoterPublic: editForm.showQuoterPublic,
-        quoterAdminCommissionPercent: Math.max(0, Number(editForm.quoterAdminCommissionPercent) || 0),
-        quoterCleaningFeeUSD: Math.max(0, Number(editForm.quoterCleaningFeeUSD) || 0),
-        quoterMonthlyRatesUSD: parsedMonthlyRates,
-        quoterCustomExchangeRates: customRates,
-      })
-      setProperties((prev) => prev.map((property) => (property.id === updated.id ? updated : property)))
-      setIsEditModalOpen(false)
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'No se pudo actualizar la propiedad.')
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
-
-  const handleResolveMapLink = async () => {
-    const mapLink = editForm.googleMapsPinUrl.trim()
-    if (!mapLink) {
-      setEditError('Primero pega el enlace del pin de Google Maps.')
-      return
-    }
-
-    setIsResolvingMapLink(true)
-    setMapResolveFeedback(null)
-    setEditError(null)
-    try {
-      const resolved = await resolveGoogleMapsLinkApi(mapLink)
-      setEditForm((prev) => ({
-        ...prev,
-        googleMapsPinUrl: resolved.resolvedUrl || prev.googleMapsPinUrl,
-        googleMapsPlaceId: resolved.googleMapsPlaceId ?? prev.googleMapsPlaceId,
-        googleMapsLat: resolved.googleMapsLat !== null ? String(resolved.googleMapsLat) : prev.googleMapsLat,
-        googleMapsLng: resolved.googleMapsLng !== null ? String(resolved.googleMapsLng) : prev.googleMapsLng,
-        locationLabel: resolved.locationLabel ?? prev.locationLabel,
-      }))
-      setMapResolveFeedback('Pin detectado. Revisa los datos y guarda cambios.')
-    } catch (error) {
-      setEditError(error instanceof Error ? error.message : 'No se pudo resolver el link de Google Maps.')
-    } finally {
-      setIsResolvingMapLink(false)
-    }
-  }
-
-  const handleImportGooglePhotos = async () => {
-    const albumUrl = editForm.googlePhotosUrl.trim()
-    if (!albumUrl) {
-      setEditError('Primero pega el link del álbum de Google Fotos.')
-      return
-    }
-
-    setIsImportingGooglePhotos(true)
-    setPhotosImportFeedback(null)
-    setEditError(null)
-    try {
-      const imported = await importGooglePhotosAlbumApi(albumUrl)
-      const currentImages = parseUrlList(editForm.galleryImageUrls)
-      const mergedImages = Array.from(new Set([...currentImages, ...imported.images]))
-      const added = mergedImages.length - currentImages.length
-
-      setEditForm((prev) => ({
-        ...prev,
-        galleryImageUrls: mergedImages.join('\n'),
-      }))
-      setPhotosImportFeedback(
-        added > 0
-          ? `Se importaron ${added} foto${added === 1 ? '' : 's'} del álbum.`
-          : 'No se detectaron fotos nuevas para agregar.',
-      )
-    } catch (error) {
-      setEditError(error instanceof Error ? error.message : 'No se pudieron importar imágenes desde Google Fotos.')
-    } finally {
-      setIsImportingGooglePhotos(false)
-    }
-  }
-
-  const handleRegenerateLink = async () => {
-    if (!selectedProperty) return
-    setIsSavingEdit(true)
-    setEditError(null)
-    try {
-      const updated = await updateProperty(selectedProperty.id, {
-        regenerateSlug: true,
-      })
-      setProperties((prev) => prev.map((property) => (property.id === updated.id ? updated : property)))
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'No se pudo regenerar el link público.')
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
 
   const togglePropertyMenu = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
@@ -548,11 +301,11 @@ export const DashboardPage = () => {
                       type="button"
                       className="property-menu__item"
                       onClick={() => {
-                        setIsEditModalOpen(true)
+                        setActiveView('settings')
                         setIsPropertyMenuOpen(false)
                       }}
                     >
-                      Editar propiedad
+                      Configuración de la propiedad
                     </button>
                     <button
                       type="button"
@@ -631,11 +384,25 @@ export const DashboardPage = () => {
               Tengo un código de acceso
             </button>
           </section>
-        ) : (
-          selectedProperty ? (
-            <PropertyWorkspace property={selectedProperty} onOpenSettings={() => setIsEditModalOpen(true)} />
-          ) : null
-        )}
+        ) : activeView === 'settings' && selectedProperty ? (
+          <PropertySettingsView
+            property={selectedProperty}
+            onBack={() => setActiveView('workspace')}
+            onPropertyUpdated={(updated) => {
+              setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+            }}
+            onImportGooglePhotos={(url) => importGooglePhotosAlbumApi(url).then((res) => res.images)}
+            onResolveMapLink={(url) =>
+              resolveGoogleMapsLinkApi(url).then((res) => ({
+                placeId: res.googleMapsPlaceId ?? undefined,
+                lat: res.googleMapsLat !== null ? String(res.googleMapsLat) : undefined,
+                lng: res.googleMapsLng !== null ? String(res.googleMapsLng) : undefined,
+              }))
+            }
+          />
+        ) : selectedProperty ? (
+          <PropertyWorkspace property={selectedProperty} onOpenSettings={() => setActiveView('settings')} />
+        ) : null}
       </main>
 
       {isInfoOpen && (
@@ -656,368 +423,6 @@ export const DashboardPage = () => {
             <button type="button" className="primary" onClick={() => setIsInfoOpen(false)}>
               Cerrar
             </button>
-          </div>
-        </div>
-      )}
-
-      {isEditModalOpen && selectedProperty && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal modal--property-settings" role="dialog" aria-modal="true" aria-labelledby="edit-property-title">
-            <div className="modal-header-row">
-              <h2 id="edit-property-title">Editar propiedad</h2>
-              <button type="button" className="secondary modal-header-close" onClick={() => setIsEditModalOpen(false)} disabled={isSavingEdit}>
-                Cerrar
-              </button>
-            </div>
-            <div className="settings-tabs-nav">
-              <button
-                type="button"
-                className={`tab-btn ${activeSettingsTab === 'cotizador' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveSettingsTab('cotizador')}
-              >
-                💰 Tarifas y Cotizador
-              </button>
-              <button
-                type="button"
-                className={`tab-btn ${activeSettingsTab === 'general' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveSettingsTab('general')}
-              >
-                📝 Info & Ubicación
-              </button>
-              <button
-                type="button"
-                className={`tab-btn ${activeSettingsTab === 'gallery' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveSettingsTab('gallery')}
-              >
-                📷 Galería & Fotos
-              </button>
-              <button
-                type="button"
-                className={`tab-btn ${activeSettingsTab === 'channels' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveSettingsTab('channels')}
-              >
-                🔗 Airbnb & Redes
-              </button>
-            </div>
-
-            <form className="modal-form modal-form--property-settings" onSubmit={handleSaveEdit}>
-              {activeSettingsTab === 'cotizador' && (
-                <div className="tab-panel">
-                  <label htmlFor="edit-quoter-public-toggle" className="checkbox-label">
-                    <input
-                      id="edit-quoter-public-toggle"
-                      type="checkbox"
-                      checked={editForm.showQuoterPublic}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, showQuoterPublic: event.target.checked }))}
-                    />
-                    Mostrar Cotizador de tarifas en la página pública para huéspedes
-                  </label>
-
-                  <div className="coordinate-row">
-                    <div>
-                      <label htmlFor="edit-commission">Comisión de administrador (%)</label>
-                      <input
-                        id="edit-commission"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.5"
-                        value={editForm.quoterAdminCommissionPercent}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, quoterAdminCommissionPercent: e.target.value }))}
-                        placeholder="10"
-                      />
-                      <span className="field-hint">Solo visible en gestión privada del dueño</span>
-                    </div>
-                    <div>
-                      <label htmlFor="edit-cleaning">Monto de limpieza (USD)</label>
-                      <input
-                        id="edit-cleaning"
-                        type="number"
-                        min="0"
-                        step="5"
-                        value={editForm.quoterCleaningFeeUSD}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, quoterCleaningFeeUSD: e.target.value }))}
-                        placeholder="50"
-                      />
-                      <span className="field-hint">Solo visible en gestión privada del dueño</span>
-                    </div>
-                  </div>
-
-                  <label className="section-subtitle">Tarifa por noche por mes (USD / noche):</label>
-                  <p className="field-hint" style={{ marginTop: '-0.3rem', marginBottom: '0.8rem' }}>
-                    Ingresa el valor asignado por cada noche de estadía en ese mes específico.
-                  </p>
-                  <div className="monthly-rates-grid">
-                    {[
-                      { key: '1', label: 'Enero' },
-                      { key: '2', label: 'Febrero' },
-                      { key: '3', label: 'Marzo' },
-                      { key: '4', label: 'Abril' },
-                      { key: '5', label: 'Mayo' },
-                      { key: '6', label: 'Junio' },
-                      { key: '7', label: 'Julio' },
-                      { key: '8', label: 'Agosto' },
-                      { key: '9', label: 'Septiembre' },
-                      { key: '10', label: 'Octubre' },
-                      { key: '11', label: 'Noviembre' },
-                      { key: '12', label: 'Diciembre' },
-                    ].map((month) => (
-                      <div key={month.key} className="month-rate-input">
-                        <label htmlFor={`rate-month-${month.key}`}>{month.label}</label>
-                        <div className="input-with-symbol">
-                          <span>$</span>
-                          <input
-                            id={`rate-month-${month.key}`}
-                            type="number"
-                            min="0"
-                            step="5"
-                            value={editForm.quoterMonthlyRatesUSD[month.key] ?? '50'}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              setEditForm((prev) => ({
-                                ...prev,
-                                quoterMonthlyRatesUSD: {
-                                  ...prev.quoterMonthlyRatesUSD,
-                                  [month.key]: val,
-                                },
-                              }))
-                            }}
-                            placeholder="80"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <label className="section-subtitle">Cotizaciones fijas de cambio (Opcional):</label>
-                  <div className="coordinate-row">
-                    <div>
-                      <label htmlFor="custom-usd-ars">1 USD en ARS (Pesos)</label>
-                      <input
-                        id="custom-usd-ars"
-                        type="number"
-                        min="0"
-                        step="10"
-                        value={editForm.customUsdToArs}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToArs: e.target.value }))}
-                        placeholder="Vacío para cotización en vivo Dólar API"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="custom-usd-brl">1 USD en BRL (Reales)</label>
-                      <input
-                        id="custom-usd-brl"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={editForm.customUsdToBrl}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToBrl: e.target.value }))}
-                        placeholder="Vacío para cotización en vivo Dólar API"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeSettingsTab === 'general' && (
-                <div className="tab-panel">
-                  <label htmlFor="edit-name">Nombre de la propiedad</label>
-                  <input
-                    id="edit-name"
-                    type="text"
-                    value={editForm.name}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
-                    required
-                  />
-                  <label htmlFor="edit-description">Descripción para la página pública</label>
-                  <textarea
-                    id="edit-description"
-                    value={editForm.description}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
-                    placeholder="Describe la experiencia de hospedaje, capacidad, estilo y puntos fuertes."
-                    rows={4}
-                  />
-                  <label htmlFor="edit-location-label">Ubicación visible (texto)</label>
-                  <input
-                    id="edit-location-label"
-                    type="text"
-                    value={editForm.locationLabel}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, locationLabel: event.target.value }))}
-                    placeholder="Ej. Playa del Carmen, Quintana Roo"
-                  />
-                  <label htmlFor="edit-maps-pin">Pin de Google Maps (URL)</label>
-                  <input
-                    id="edit-maps-pin"
-                    type="url"
-                    value={editForm.googleMapsPinUrl}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      const parsed = parseGoogleMapsPin(value)
-                      setEditForm((prev) => ({
-                        ...prev,
-                        googleMapsPinUrl: value,
-                        googleMapsPlaceId: parsed.placeId ?? prev.googleMapsPlaceId,
-                        googleMapsLat: parsed.lat ?? prev.googleMapsLat,
-                        googleMapsLng: parsed.lng ?? prev.googleMapsLng,
-                      }))
-                      setMapResolveFeedback(null)
-                    }}
-                    placeholder="https://maps.google.com/..."
-                  />
-                  <div className="map-link-tools">
-                    <button type="button" className="secondary" onClick={() => void handleResolveMapLink()} disabled={isResolvingMapLink}>
-                      {isResolvingMapLink ? 'Procesando link...' : 'Detectar pin automáticamente'}
-                    </button>
-                    <p className="field-hint">
-                      Acepta links cortos de Google Maps (`maps.app.goo.gl`) y completa coordenadas/placeId para evitar errores de mapa en la web pública.
-                    </p>
-                    {mapResolveFeedback && <p className="field-hint field-hint--ok">{mapResolveFeedback}</p>}
-                  </div>
-                  <label htmlFor="edit-maps-place-id">Google Place ID (opcional)</label>
-                  <input
-                    id="edit-maps-place-id"
-                    type="text"
-                    value={editForm.googleMapsPlaceId}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsPlaceId: event.target.value }))}
-                    placeholder="ChIJ..."
-                  />
-                  <div className="coordinate-row">
-                    <div>
-                      <label htmlFor="edit-maps-lat">Latitud</label>
-                      <input
-                        id="edit-maps-lat"
-                        type="text"
-                        value={editForm.googleMapsLat}
-                        onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLat: event.target.value }))}
-                        placeholder="20.2111"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="edit-maps-lng">Longitud</label>
-                      <input
-                        id="edit-maps-lng"
-                        type="text"
-                        value={editForm.googleMapsLng}
-                        onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLng: event.target.value }))}
-                        placeholder="-87.4653"
-                      />
-                    </div>
-                  </div>
-                  <label htmlFor="edit-google-reviews-toggle" className="checkbox-label">
-                    <input
-                      id="edit-google-reviews-toggle"
-                      type="checkbox"
-                      checked={editForm.showGoogleReviews}
-                      onChange={(event) => setEditForm((prev) => ({ ...prev, showGoogleReviews: event.target.checked }))}
-                    />
-                    Mostrar reseñas de Google Maps en la página pública
-                  </label>
-                  <label htmlFor="edit-google-reviews-url">URL de reseñas (opcional)</label>
-                  <input
-                    id="edit-google-reviews-url"
-                    type="url"
-                    value={editForm.googleMapsReviewsUrl}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsReviewsUrl: event.target.value }))}
-                    placeholder="https://search.google.com/local/reviews?placeid=..."
-                  />
-                </div>
-              )}
-
-              {activeSettingsTab === 'gallery' && (
-                <div className="tab-panel">
-                  <label htmlFor="edit-google-photos-link">Álbum de Google Fotos (URL)</label>
-                  <input
-                    id="edit-google-photos-link"
-                    type="url"
-                    value={editForm.googlePhotosUrl}
-                    onChange={(event) => {
-                      setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))
-                      setPhotosImportFeedback(null)
-                    }}
-                    placeholder="https://photos.app.goo.gl/tu_album"
-                  />
-                  <div className="map-link-tools">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => void handleImportGooglePhotos()}
-                      disabled={isImportingGooglePhotos}
-                    >
-                      {isImportingGooglePhotos ? 'Importando fotos...' : 'Importar fotos del álbum'}
-                    </button>
-                    <p className="field-hint">
-                      Se extraen e importan URLs de imagen públicas desde tu álbum de Google Fotos (hasta 200 fotos).
-                    </p>
-                    {photosImportFeedback && <p className="field-hint field-hint--ok">{photosImportFeedback}</p>}
-                  </div>
-                  <label htmlFor="edit-gallery-urls">URLs directas de Galería (una por línea)</label>
-                  <textarea
-                    id="edit-gallery-urls"
-                    value={editForm.galleryImageUrls}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, galleryImageUrls: event.target.value }))}
-                    placeholder={'https://.../foto-1.jpg\nhttps://.../foto-2.jpg'}
-                    rows={8}
-                  />
-                </div>
-              )}
-
-              {activeSettingsTab === 'channels' && (
-                <div className="tab-panel">
-                  <label htmlFor="edit-ical">Enlace iCal de Airbnb (Obligatorio)</label>
-                  <input
-                    id="edit-ical"
-                    type="url"
-                    value={editForm.airbnbIcalUrl}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, airbnbIcalUrl: event.target.value }))}
-                    required
-                  />
-                  <label htmlFor="edit-instagram-link">Perfil de Instagram (URL)</label>
-                  <input
-                    id="edit-instagram-link"
-                    type="url"
-                    value={editForm.instagramUrl}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
-                    placeholder="https://instagram.com/tu_cuenta"
-                  />
-                  <label htmlFor="edit-instagram-post-urls">Posts/Reels de Instagram destacados (una URL por línea)</label>
-                  <textarea
-                    id="edit-instagram-post-urls"
-                    value={editForm.instagramPostUrls}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, instagramPostUrls: event.target.value }))}
-                    placeholder={'https://www.instagram.com/p/...\nhttps://www.instagram.com/reel/...'}
-                    rows={4}
-                  />
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-                    <button type="button" className="secondary" onClick={() => void handleRegenerateLink()} disabled={isSavingEdit}>
-                      Regenerar link público de la propiedad
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="edit-actions">
-                <button type="submit" className="primary" disabled={isSavingEdit}>
-                  {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-              {editError && (
-                <div className="alert alert--inline" role="alert">
-                  {editError}
-                </div>
-              )}
-              <p className="public-link">
-                Link público actual:{' '}
-                <a href={getPublicUrl(selectedProperty)} target="_blank" rel="noopener noreferrer">
-                  {getPublicUrl(selectedProperty)}
-                </a>
-              </p>
-              <p className="public-link">
-                Link del calendario:{' '}
-                <a href={getPublicCalendarUrl(selectedProperty)} target="_blank" rel="noopener noreferrer">
-                  {getPublicCalendarUrl(selectedProperty)}
-                </a>
-              </p>
-            </form>
           </div>
         </div>
       )}
