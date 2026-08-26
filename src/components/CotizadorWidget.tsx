@@ -25,9 +25,7 @@ const MONTH_NAMES = [
   'Diciembre',
 ]
 
-const getDaysInMonth = (year: number, monthIndex: number) => {
-  return new Date(year, monthIndex + 1, 0).getDate()
-}
+
 
 const formatDateLocal = (d: Date) => {
   const year = d.getFullYear()
@@ -95,33 +93,29 @@ export const CotizadorWidget = ({
       return null
     }
 
-    const nights: { date: Date; monthIndex: number; monthName: string; year: number; dailyRateUSD: number; monthlyRateUSD: number; daysInMonth: number }[] = []
+    const nights: { date: Date; monthIndex: number; monthName: string; year: number; nightRateUSD: number }[] = []
     const cursor = new Date(startDate.getTime())
 
     while (cursor < endDate) {
       const year = cursor.getFullYear()
       const monthIndex = cursor.getMonth()
       const monthKey = String(monthIndex + 1)
-      const daysInMonth = getDaysInMonth(year, monthIndex)
 
-      // Fallback monthly USD rate logic: month specific -> default -> 1000 USD
-      const monthlyRateUSD = monthlyRatesUSD[monthKey] ?? monthlyRatesUSD['default'] ?? 1000
-      const dailyRateUSD = monthlyRateUSD > 0 ? monthlyRateUSD / daysInMonth : 0
+      // Rate configured for that month is the price per night (USD/noche)
+      const nightRateUSD = monthlyRatesUSD[monthKey] ?? monthlyRatesUSD['default'] ?? 50
 
       nights.push({
         date: new Date(cursor.getTime()),
         monthIndex,
         monthName: MONTH_NAMES[monthIndex],
         year,
-        dailyRateUSD,
-        monthlyRateUSD,
-        daysInMonth,
+        nightRateUSD,
       })
 
       cursor.setDate(cursor.getDate() + 1)
     }
 
-    const baseStayUSD = nights.reduce((acc, curr) => acc + curr.dailyRateUSD, 0)
+    const baseStayUSD = nights.reduce((acc, curr) => acc + curr.nightRateUSD, 0)
     const commissionUSD = mode === 'private' && adminCommissionPercent > 0 ? baseStayUSD * (adminCommissionPercent / 100) : 0
     const cleaningUSD = mode === 'private' && cleaningFeeUSD > 0 ? cleaningFeeUSD : 0
 
@@ -306,7 +300,7 @@ export const CotizadorWidget = ({
                         {monthLabel} ({count} {count === 1 ? 'noche' : 'noches'}):
                       </span>
                       <span>
-                        ${sample.monthlyRateUSD.toLocaleString()} USD/mes ({formatCurrency(sample.dailyRateUSD, 'USD')}/noche)
+                        {formatCurrency(sample.nightRateUSD, 'USD')}/noche &times; {count} {count === 1 ? 'noche' : 'noches'} = {formatCurrency(sample.nightRateUSD * count, 'USD')}
                       </span>
                     </div>
                   )

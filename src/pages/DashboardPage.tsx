@@ -90,18 +90,18 @@ const INITIAL_FORM = {
   quoterAdminCommissionPercent: '0',
   quoterCleaningFeeUSD: '0',
   quoterMonthlyRatesUSD: {
-    '1': '1500',
-    '2': '1500',
-    '3': '1200',
-    '4': '1000',
-    '5': '1000',
-    '6': '1000',
-    '7': '1200',
-    '8': '1200',
-    '9': '1000',
-    '10': '1000',
-    '11': '1200',
-    '12': '1500',
+    '1': '80',
+    '2': '80',
+    '3': '60',
+    '4': '50',
+    '5': '50',
+    '6': '50',
+    '7': '60',
+    '8': '60',
+    '9': '50',
+    '10': '50',
+    '11': '60',
+    '12': '80',
   } as Record<string, string>,
   customUsdToArs: '',
   customUsdToBrl: '',
@@ -130,6 +130,7 @@ export const DashboardPage = () => {
   const [joinCode, setJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'cotizador' | 'general' | 'gallery' | 'channels'>('cotizador')
 
   const loadProperties = useCallback(async () => {
     setLoading(true)
@@ -668,287 +669,340 @@ export const DashboardPage = () => {
                 Cerrar
               </button>
             </div>
+            <div className="settings-tabs-nav">
+              <button
+                type="button"
+                className={`tab-btn ${activeSettingsTab === 'cotizador' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveSettingsTab('cotizador')}
+              >
+                💰 Tarifas y Cotizador
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeSettingsTab === 'general' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveSettingsTab('general')}
+              >
+                📝 Info & Ubicación
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeSettingsTab === 'gallery' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveSettingsTab('gallery')}
+              >
+                📷 Galería & Fotos
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeSettingsTab === 'channels' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveSettingsTab('channels')}
+              >
+                🔗 Airbnb & Redes
+              </button>
+            </div>
+
             <form className="modal-form modal-form--property-settings" onSubmit={handleSaveEdit}>
-              <label htmlFor="edit-name">Nombre</label>
-              <input
-                id="edit-name"
-                type="text"
-                value={editForm.name}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
-                required
-              />
-              <label htmlFor="edit-ical">Enlace iCal de Airbnb</label>
-              <input
-                id="edit-ical"
-                type="url"
-                value={editForm.airbnbIcalUrl}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, airbnbIcalUrl: event.target.value }))}
-                required
-              />
-              <label htmlFor="edit-instagram-link">Instagram (URL opcional)</label>
-              <input
-                id="edit-instagram-link"
-                type="url"
-                value={editForm.instagramUrl}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
-                placeholder="https://instagram.com/tu_cuenta"
-              />
-              <label htmlFor="edit-google-photos-link">Google Fotos (URL opcional)</label>
-              <input
-                id="edit-google-photos-link"
-                type="url"
-                value={editForm.googlePhotosUrl}
-                onChange={(event) => {
-                  setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))
-                  setPhotosImportFeedback(null)
-                }}
-                placeholder="https://photos.app.goo.gl/tu_album"
-              />
-              <div className="map-link-tools">
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void handleImportGooglePhotos()}
-                  disabled={isImportingGooglePhotos}
-                >
-                  {isImportingGooglePhotos ? 'Importando fotos...' : 'Importar fotos del álbum'}
-                </button>
-                <p className="field-hint">
-                  No subimos archivos a storage: se agregan URLs públicas del álbum para usarlas en la galería.
-                </p>
-                {photosImportFeedback && <p className="field-hint field-hint--ok">{photosImportFeedback}</p>}
-              </div>
-              <label htmlFor="edit-description">Descripción para la página pública</label>
-              <textarea
-                id="edit-description"
-                value={editForm.description}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
-                placeholder="Describe la experiencia de hospedaje, capacidad, estilo y puntos fuertes."
-                rows={4}
-              />
-              <label htmlFor="edit-location-label">Ubicación visible (texto)</label>
-              <input
-                id="edit-location-label"
-                type="text"
-                value={editForm.locationLabel}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, locationLabel: event.target.value }))}
-                placeholder="Ej. Playa del Carmen, Quintana Roo"
-              />
-              <label htmlFor="edit-maps-pin">Pin de Google Maps (URL)</label>
-              <input
-                id="edit-maps-pin"
-                type="url"
-                value={editForm.googleMapsPinUrl}
-                onChange={(event) => {
-                  const value = event.target.value
-                  const parsed = parseGoogleMapsPin(value)
-                  setEditForm((prev) => ({
-                    ...prev,
-                    googleMapsPinUrl: value,
-                    googleMapsPlaceId: parsed.placeId ?? prev.googleMapsPlaceId,
-                    googleMapsLat: parsed.lat ?? prev.googleMapsLat,
-                    googleMapsLng: parsed.lng ?? prev.googleMapsLng,
-                  }))
-                  setMapResolveFeedback(null)
-                }}
-                placeholder="https://maps.google.com/..."
-              />
-              <div className="map-link-tools">
-                <button type="button" className="secondary" onClick={() => void handleResolveMapLink()} disabled={isResolvingMapLink}>
-                  {isResolvingMapLink ? 'Procesando link...' : 'Detectar pin automáticamente'}
-                </button>
-                <p className="field-hint">
-                  Acepta links cortos de Google Maps (`maps.app.goo.gl`) y completa coordenadas/placeId para evitar errores de mapa en
-                  la web pública.
-                </p>
-                {mapResolveFeedback && <p className="field-hint field-hint--ok">{mapResolveFeedback}</p>}
-              </div>
-              <label htmlFor="edit-maps-place-id">Google Place ID (opcional)</label>
-              <input
-                id="edit-maps-place-id"
-                type="text"
-                value={editForm.googleMapsPlaceId}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsPlaceId: event.target.value }))}
-                placeholder="ChIJ..."
-              />
-              <div className="coordinate-row">
-                <div>
-                  <label htmlFor="edit-maps-lat">Latitud</label>
-                  <input
-                    id="edit-maps-lat"
-                    type="text"
-                    value={editForm.googleMapsLat}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLat: event.target.value }))}
-                    placeholder="20.2111"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-maps-lng">Longitud</label>
-                  <input
-                    id="edit-maps-lng"
-                    type="text"
-                    value={editForm.googleMapsLng}
-                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLng: event.target.value }))}
-                    placeholder="-87.4653"
-                  />
-                </div>
-              </div>
-              <label htmlFor="edit-google-reviews-toggle" className="checkbox-label">
-                <input
-                  id="edit-google-reviews-toggle"
-                  type="checkbox"
-                  checked={editForm.showGoogleReviews}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, showGoogleReviews: event.target.checked }))}
-                />
-                Mostrar reseñas de Google Maps en la página pública
-              </label>
-              <label htmlFor="edit-google-reviews-url">URL de reseñas (opcional)</label>
-              <input
-                id="edit-google-reviews-url"
-                type="url"
-                value={editForm.googleMapsReviewsUrl}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsReviewsUrl: event.target.value }))}
-                placeholder="https://search.google.com/local/reviews?placeid=..."
-              />
-              <label htmlFor="edit-gallery-urls">URLs de galería (una por línea)</label>
-              <textarea
-                id="edit-gallery-urls"
-                value={editForm.galleryImageUrls}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, galleryImageUrls: event.target.value }))}
-                placeholder={'https://.../foto-1.jpg\nhttps://.../foto-2.jpg'}
-                rows={5}
-              />
-              <label htmlFor="edit-instagram-post-urls">Posts/Reels de Instagram (una URL por línea)</label>
-              <textarea
-                id="edit-instagram-post-urls"
-                value={editForm.instagramPostUrls}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, instagramPostUrls: event.target.value }))}
-                placeholder={'https://www.instagram.com/p/...\nhttps://www.instagram.com/reel/...'}
-                rows={4}
-              />
-              <p className="field-hint">
-                Usa publicaciones públicas de Instagram (`/p/` o `/reel/`). Historias y feed automático no están soportados en este modo.
-              </p>
-              <h3 className="settings-section-title">Configuración del Cotizador de Tarifas</h3>
-              <label htmlFor="edit-quoter-public-toggle" className="checkbox-label">
-                <input
-                  id="edit-quoter-public-toggle"
-                  type="checkbox"
-                  checked={editForm.showQuoterPublic}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, showQuoterPublic: event.target.checked }))}
-                />
-                Mostrar Cotizador de tarifas en la página pública para huéspedes
-              </label>
-
-              <div className="coordinate-row">
-                <div>
-                  <label htmlFor="edit-commission">Comisión de administrador (%)</label>
-                  <input
-                    id="edit-commission"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={editForm.quoterAdminCommissionPercent}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, quoterAdminCommissionPercent: e.target.value }))}
-                    placeholder="10"
-                  />
-                  <span className="field-hint">Solo visible en gestión privada</span>
-                </div>
-                <div>
-                  <label htmlFor="edit-cleaning">Monto de limpieza (USD)</label>
-                  <input
-                    id="edit-cleaning"
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={editForm.quoterCleaningFeeUSD}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, quoterCleaningFeeUSD: e.target.value }))}
-                    placeholder="50"
-                  />
-                  <span className="field-hint">Solo visible en gestión privada</span>
-                </div>
-              </div>
-
-              <label>Tarifas mensuales por mes (USD/mes):</label>
-              <div className="monthly-rates-grid">
-                {[
-                  { key: '1', label: 'Enero' },
-                  { key: '2', label: 'Febrero' },
-                  { key: '3', label: 'Marzo' },
-                  { key: '4', label: 'Abril' },
-                  { key: '5', label: 'Mayo' },
-                  { key: '6', label: 'Junio' },
-                  { key: '7', label: 'Julio' },
-                  { key: '8', label: 'Agosto' },
-                  { key: '9', label: 'Septiembre' },
-                  { key: '10', label: 'Octubre' },
-                  { key: '11', label: 'Noviembre' },
-                  { key: '12', label: 'Diciembre' },
-                ].map((month) => (
-                  <div key={month.key} className="month-rate-input">
-                    <label htmlFor={`rate-month-${month.key}`}>{month.label}</label>
+              {activeSettingsTab === 'cotizador' && (
+                <div className="tab-panel">
+                  <label htmlFor="edit-quoter-public-toggle" className="checkbox-label">
                     <input
-                      id={`rate-month-${month.key}`}
-                      type="number"
-                      min="0"
-                      step="50"
-                      value={editForm.quoterMonthlyRatesUSD[month.key] ?? '1000'}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setEditForm((prev) => ({
-                          ...prev,
-                          quoterMonthlyRatesUSD: {
-                            ...prev.quoterMonthlyRatesUSD,
-                            [month.key]: val,
-                          },
-                        }))
-                      }}
-                      placeholder="1500"
+                      id="edit-quoter-public-toggle"
+                      type="checkbox"
+                      checked={editForm.showQuoterPublic}
+                      onChange={(event) => setEditForm((prev) => ({ ...prev, showQuoterPublic: event.target.checked }))}
                     />
-                  </div>
-                ))}
-              </div>
+                    Mostrar Cotizador de tarifas en la página pública para huéspedes
+                  </label>
 
-              <label>Cotizaciones de cambio personalizadas (Opcional):</label>
-              <div className="coordinate-row">
-                <div>
-                  <label htmlFor="custom-usd-ars">1 USD en ARS (Pesos)</label>
+                  <div className="coordinate-row">
+                    <div>
+                      <label htmlFor="edit-commission">Comisión de administrador (%)</label>
+                      <input
+                        id="edit-commission"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={editForm.quoterAdminCommissionPercent}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, quoterAdminCommissionPercent: e.target.value }))}
+                        placeholder="10"
+                      />
+                      <span className="field-hint">Solo visible en gestión privada del dueño</span>
+                    </div>
+                    <div>
+                      <label htmlFor="edit-cleaning">Monto de limpieza (USD)</label>
+                      <input
+                        id="edit-cleaning"
+                        type="number"
+                        min="0"
+                        step="5"
+                        value={editForm.quoterCleaningFeeUSD}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, quoterCleaningFeeUSD: e.target.value }))}
+                        placeholder="50"
+                      />
+                      <span className="field-hint">Solo visible en gestión privada del dueño</span>
+                    </div>
+                  </div>
+
+                  <label className="section-subtitle">Tarifa por noche por mes (USD / noche):</label>
+                  <p className="field-hint" style={{ marginTop: '-0.3rem', marginBottom: '0.8rem' }}>
+                    Ingresa el valor asignado por cada noche de estadía en ese mes específico.
+                  </p>
+                  <div className="monthly-rates-grid">
+                    {[
+                      { key: '1', label: 'Enero' },
+                      { key: '2', label: 'Febrero' },
+                      { key: '3', label: 'Marzo' },
+                      { key: '4', label: 'Abril' },
+                      { key: '5', label: 'Mayo' },
+                      { key: '6', label: 'Junio' },
+                      { key: '7', label: 'Julio' },
+                      { key: '8', label: 'Agosto' },
+                      { key: '9', label: 'Septiembre' },
+                      { key: '10', label: 'Octubre' },
+                      { key: '11', label: 'Noviembre' },
+                      { key: '12', label: 'Diciembre' },
+                    ].map((month) => (
+                      <div key={month.key} className="month-rate-input">
+                        <label htmlFor={`rate-month-${month.key}`}>{month.label}</label>
+                        <div className="input-with-symbol">
+                          <span>$</span>
+                          <input
+                            id={`rate-month-${month.key}`}
+                            type="number"
+                            min="0"
+                            step="5"
+                            value={editForm.quoterMonthlyRatesUSD[month.key] ?? '50'}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setEditForm((prev) => ({
+                                ...prev,
+                                quoterMonthlyRatesUSD: {
+                                  ...prev.quoterMonthlyRatesUSD,
+                                  [month.key]: val,
+                                },
+                              }))
+                            }}
+                            placeholder="80"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <label className="section-subtitle">Cotizaciones fijas de cambio (Opcional):</label>
+                  <div className="coordinate-row">
+                    <div>
+                      <label htmlFor="custom-usd-ars">1 USD en ARS (Pesos)</label>
+                      <input
+                        id="custom-usd-ars"
+                        type="number"
+                        min="0"
+                        step="10"
+                        value={editForm.customUsdToArs}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToArs: e.target.value }))}
+                        placeholder="Vacío para cotización en vivo Dólar API"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="custom-usd-brl">1 USD en BRL (Reales)</label>
+                      <input
+                        id="custom-usd-brl"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={editForm.customUsdToBrl}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToBrl: e.target.value }))}
+                        placeholder="Vacío para cotización en vivo Dólar API"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeSettingsTab === 'general' && (
+                <div className="tab-panel">
+                  <label htmlFor="edit-name">Nombre de la propiedad</label>
                   <input
-                    id="custom-usd-ars"
-                    type="number"
-                    min="0"
-                    step="10"
-                    value={editForm.customUsdToArs}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToArs: e.target.value }))}
-                    placeholder="Dejar vacío para cotización en vivo"
+                    id="edit-name"
+                    type="text"
+                    value={editForm.name}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
+                    required
+                  />
+                  <label htmlFor="edit-description">Descripción para la página pública</label>
+                  <textarea
+                    id="edit-description"
+                    value={editForm.description}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
+                    placeholder="Describe la experiencia de hospedaje, capacidad, estilo y puntos fuertes."
+                    rows={4}
+                  />
+                  <label htmlFor="edit-location-label">Ubicación visible (texto)</label>
+                  <input
+                    id="edit-location-label"
+                    type="text"
+                    value={editForm.locationLabel}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, locationLabel: event.target.value }))}
+                    placeholder="Ej. Playa del Carmen, Quintana Roo"
+                  />
+                  <label htmlFor="edit-maps-pin">Pin de Google Maps (URL)</label>
+                  <input
+                    id="edit-maps-pin"
+                    type="url"
+                    value={editForm.googleMapsPinUrl}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      const parsed = parseGoogleMapsPin(value)
+                      setEditForm((prev) => ({
+                        ...prev,
+                        googleMapsPinUrl: value,
+                        googleMapsPlaceId: parsed.placeId ?? prev.googleMapsPlaceId,
+                        googleMapsLat: parsed.lat ?? prev.googleMapsLat,
+                        googleMapsLng: parsed.lng ?? prev.googleMapsLng,
+                      }))
+                      setMapResolveFeedback(null)
+                    }}
+                    placeholder="https://maps.google.com/..."
+                  />
+                  <div className="map-link-tools">
+                    <button type="button" className="secondary" onClick={() => void handleResolveMapLink()} disabled={isResolvingMapLink}>
+                      {isResolvingMapLink ? 'Procesando link...' : 'Detectar pin automáticamente'}
+                    </button>
+                    <p className="field-hint">
+                      Acepta links cortos de Google Maps (`maps.app.goo.gl`) y completa coordenadas/placeId para evitar errores de mapa en la web pública.
+                    </p>
+                    {mapResolveFeedback && <p className="field-hint field-hint--ok">{mapResolveFeedback}</p>}
+                  </div>
+                  <label htmlFor="edit-maps-place-id">Google Place ID (opcional)</label>
+                  <input
+                    id="edit-maps-place-id"
+                    type="text"
+                    value={editForm.googleMapsPlaceId}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsPlaceId: event.target.value }))}
+                    placeholder="ChIJ..."
+                  />
+                  <div className="coordinate-row">
+                    <div>
+                      <label htmlFor="edit-maps-lat">Latitud</label>
+                      <input
+                        id="edit-maps-lat"
+                        type="text"
+                        value={editForm.googleMapsLat}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLat: event.target.value }))}
+                        placeholder="20.2111"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="edit-maps-lng">Longitud</label>
+                      <input
+                        id="edit-maps-lng"
+                        type="text"
+                        value={editForm.googleMapsLng}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsLng: event.target.value }))}
+                        placeholder="-87.4653"
+                      />
+                    </div>
+                  </div>
+                  <label htmlFor="edit-google-reviews-toggle" className="checkbox-label">
+                    <input
+                      id="edit-google-reviews-toggle"
+                      type="checkbox"
+                      checked={editForm.showGoogleReviews}
+                      onChange={(event) => setEditForm((prev) => ({ ...prev, showGoogleReviews: event.target.checked }))}
+                    />
+                    Mostrar reseñas de Google Maps en la página pública
+                  </label>
+                  <label htmlFor="edit-google-reviews-url">URL de reseñas (opcional)</label>
+                  <input
+                    id="edit-google-reviews-url"
+                    type="url"
+                    value={editForm.googleMapsReviewsUrl}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, googleMapsReviewsUrl: event.target.value }))}
+                    placeholder="https://search.google.com/local/reviews?placeid=..."
                   />
                 </div>
-                <div>
-                  <label htmlFor="custom-usd-brl">1 USD en BRL (Reales)</label>
+              )}
+
+              {activeSettingsTab === 'gallery' && (
+                <div className="tab-panel">
+                  <label htmlFor="edit-google-photos-link">Álbum de Google Fotos (URL)</label>
                   <input
-                    id="custom-usd-brl"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={editForm.customUsdToBrl}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, customUsdToBrl: e.target.value }))}
-                    placeholder="Dejar vacío para cotización en vivo"
+                    id="edit-google-photos-link"
+                    type="url"
+                    value={editForm.googlePhotosUrl}
+                    onChange={(event) => {
+                      setEditForm((prev) => ({ ...prev, googlePhotosUrl: event.target.value }))
+                      setPhotosImportFeedback(null)
+                    }}
+                    placeholder="https://photos.app.goo.gl/tu_album"
+                  />
+                  <div className="map-link-tools">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void handleImportGooglePhotos()}
+                      disabled={isImportingGooglePhotos}
+                    >
+                      {isImportingGooglePhotos ? 'Importando fotos...' : 'Importar fotos del álbum'}
+                    </button>
+                    <p className="field-hint">
+                      Se extraen e importan URLs de imagen públicas desde tu álbum de Google Fotos (hasta 200 fotos).
+                    </p>
+                    {photosImportFeedback && <p className="field-hint field-hint--ok">{photosImportFeedback}</p>}
+                  </div>
+                  <label htmlFor="edit-gallery-urls">URLs directas de Galería (una por línea)</label>
+                  <textarea
+                    id="edit-gallery-urls"
+                    value={editForm.galleryImageUrls}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, galleryImageUrls: event.target.value }))}
+                    placeholder={'https://.../foto-1.jpg\nhttps://.../foto-2.jpg'}
+                    rows={8}
                   />
                 </div>
-              </div>
+              )}
+
+              {activeSettingsTab === 'channels' && (
+                <div className="tab-panel">
+                  <label htmlFor="edit-ical">Enlace iCal de Airbnb (Obligatorio)</label>
+                  <input
+                    id="edit-ical"
+                    type="url"
+                    value={editForm.airbnbIcalUrl}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, airbnbIcalUrl: event.target.value }))}
+                    required
+                  />
+                  <label htmlFor="edit-instagram-link">Perfil de Instagram (URL)</label>
+                  <input
+                    id="edit-instagram-link"
+                    type="url"
+                    value={editForm.instagramUrl}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, instagramUrl: event.target.value }))}
+                    placeholder="https://instagram.com/tu_cuenta"
+                  />
+                  <label htmlFor="edit-instagram-post-urls">Posts/Reels de Instagram destacados (una URL por línea)</label>
+                  <textarea
+                    id="edit-instagram-post-urls"
+                    value={editForm.instagramPostUrls}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, instagramPostUrls: event.target.value }))}
+                    placeholder={'https://www.instagram.com/p/...\nhttps://www.instagram.com/reel/...'}
+                    rows={4}
+                  />
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                    <button type="button" className="secondary" onClick={() => void handleRegenerateLink()} disabled={isSavingEdit}>
+                      Regenerar link público de la propiedad
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="edit-actions">
                 <button type="submit" className="primary" disabled={isSavingEdit}>
                   {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
                 </button>
-                <button type="button" className="secondary" onClick={() => void handleRegenerateLink()} disabled={isSavingEdit}>
-                  Regenerar link público
-                </button>
               </div>
               {editError && (
                 <div className="alert alert--inline" role="alert">
-                  <span>{editError}</span>
+                  {editError}
                 </div>
               )}
               <p className="public-link">
