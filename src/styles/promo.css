@@ -231,11 +231,17 @@
   font-family: 'Fraunces', Georgia, serif;
   font-size: 1.62rem;
   color: var(--color-primary-dark);
+  flex-shrink: 0;
 }
 
 .promo-section__header p {
   margin: 0;
   color: #355a7b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  text-align: right;
 }
 
 .promo-carousel {
