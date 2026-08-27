@@ -59,6 +59,7 @@
 }
 
 .promo-hero {
+  position: relative;
   display: grid;
   grid-template-columns: 1.26fr 1fr;
   gap: clamp(1rem, 2vw, 1.5rem);
@@ -67,6 +68,13 @@
   box-shadow: 0 26px 54px rgba(14, 44, 70, 0.12);
   border-radius: 1.4rem;
   padding: clamp(1rem, 1.9vw, 1.25rem);
+}
+
+.promo-hero__top-actions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 25;
 }
 
 .promo-hero--brochure {

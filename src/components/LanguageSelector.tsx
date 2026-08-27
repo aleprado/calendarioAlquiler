@@ -11,7 +11,8 @@ export const LanguageSelector = () => {
         onClick={() => setLocale('es')}
         title="Español"
       >
-        🇦🇷 ES
+        <span className="language-selector__flag">🇦🇷</span>
+        <span>ES</span>
       </button>
       <button
         type="button"
@@ -19,8 +20,10 @@ export const LanguageSelector = () => {
         onClick={() => setLocale('pt')}
         title="Português"
       >
-        🇧🇷 PT
+        <span className="language-selector__flag">🇧🇷</span>
+        <span>PT</span>
       </button>
     </div>
   )
 }
+

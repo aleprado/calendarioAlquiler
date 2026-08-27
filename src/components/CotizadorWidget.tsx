@@ -62,18 +62,14 @@ export const CotizadorWidget = ({
   onOpenSettings,
 }: CotizadorWidgetProps) => {
   const { t } = useLocale()
-  const today = new Date()
-  const defaultStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const defaultEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
-
-  const [startDateStr, setStartDateStr] = useState(initialStartDate || formatDateLocal(defaultStart))
-  const [endDateStr, setEndDateStr] = useState(initialEndDate || formatDateLocal(defaultEnd))
+  const [startDateStr, setStartDateStr] = useState(initialStartDate || '')
+  const [endDateStr, setEndDateStr] = useState(initialEndDate || '')
   const [rates, setRates] = useState<ExchangeRates | null>(null)
   const [loadingRates, setLoadingRates] = useState(true)
   const [showInfoDetails, setShowInfoDetails] = useState(false)
 
-  useEffect(() => { if (initialStartDate) setStartDateStr(initialStartDate) }, [initialStartDate])
-  useEffect(() => { if (initialEndDate) setEndDateStr(initialEndDate) }, [initialEndDate])
+  useEffect(() => { if (initialStartDate !== undefined) setStartDateStr(initialStartDate || '') }, [initialStartDate])
+  useEffect(() => { if (initialEndDate !== undefined) setEndDateStr(initialEndDate || '') }, [initialEndDate])
 
   useEffect(() => {
     let isMounted = true
@@ -194,8 +190,13 @@ export const CotizadorWidget = ({
 
       {loadingRates ? (
         <div className="loading loading--inline">{t('cotizadorLoadingRates')}</div>
+      ) : !startDateStr || !endDateStr ? (
+        <div className="cotizador-prompt-box">
+          <span className="cotizador-prompt-icon">🗓️</span>
+          <span>{t('cotizadorSelectValidDates')}</span>
+        </div>
       ) : !calculation || !converted ? (
-        <div className="alert alert--inline" role="alert">{t('cotizadorSelectValidDates')}</div>
+        <div className="alert alert--inline" role="alert">{t('eventFormErrorEndBeforeStart')}</div>
       ) : calculation.hasBlockedConflict ? (
         <div className="cotizador-blocked-alert" role="alert">
           <div className="cotizador-blocked-alert__icon">⛔</div>

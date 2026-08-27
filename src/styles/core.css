@@ -844,6 +844,86 @@ a.danger {
 
 /* ==================== Instagram Account Card ==================== */
 
+/* ==================== Language Selector Styles ==================== */
+
+.language-selector {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  padding: 3px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(15, 118, 110, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1) !important;
+  z-index: 20;
+}
+
+.language-selector__btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  color: #4f647f !important;
+  transition: all 0.2s ease !important;
+  min-height: unset !important;
+  box-shadow: none !important;
+  letter-spacing: 0.02em !important;
+}
+
+.language-selector__btn:hover {
+  color: #0f766e !important;
+  background: rgba(15, 118, 110, 0.08) !important;
+  transform: none !important;
+}
+
+.language-selector__btn--active {
+  background: #0f766e !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(15, 118, 110, 0.35) !important;
+}
+
+.language-selector__btn--active:hover {
+  background: #0d6d66 !important;
+  color: #ffffff !important;
+}
+
+.language-selector__flag {
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+
+/* ==================== Cotizador Prompt Box ==================== */
+
+.cotizador-prompt-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1.2rem 1.4rem;
+  background: rgba(240, 253, 250, 0.7);
+  border: 1.5px dashed rgba(15, 118, 110, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-dark);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.cotizador-prompt-icon {
+  font-size: 1.25rem;
+}
+
 /* ==================== Logo & Toast Styles ==================== */
 
 .app-logo {
