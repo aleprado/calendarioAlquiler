@@ -1018,6 +1018,8 @@ a.danger {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .form-group label {
@@ -1034,6 +1036,10 @@ a.danger {
   font-size: 0.95rem;
   background: #ffffff;
   font-family: inherit;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .form-group input:focus,
@@ -1046,10 +1052,15 @@ a.danger {
 .input-button-row {
   display: flex;
   gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-button-row input {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .checkbox-label--lg {

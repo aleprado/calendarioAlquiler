@@ -464,22 +464,34 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
     setEventError(null)
   }, [])
 
-  const openEditModalForEvent = useCallback((event: CalendarEvent) => {
-    if (event.source === 'airbnb' || (event.source === 'public' && event.status === 'pending')) {
-      handleOpenEventDetails(event)
-      return
-    }
-    setPendingRange(normalizeSelectionRange(event.start, event.end))
-    setEditingEvent(event)
-    setModalError(null)
-    setEventError(null)
-    setSelectedEvent(null)
-    setIsModalOpen(true)
-  }, [handleOpenEventDetails])
+  const updateEventInState = useCallback((updated: CalendarEvent) => {
+    setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
+  }, [])
+
+  const removeEventFromState = useCallback((eventId: string) => {
+    setEvents((prev) => prev.filter((event) => event.id !== eventId))
+  }, [])
 
   const handleSelectCalendarEvent = useCallback((event: CalendarEvent) => {
-    openEditModalForEvent(event)
-  }, [openEditModalForEvent])
+    handleOpenEventDetails(event)
+  }, [handleOpenEventDetails])
+
+  const handleDeleteEditingEvent = useCallback(async () => {
+    if (!editingEvent) return
+    const shouldDelete = window.confirm(`¿Eliminar el evento "${editingEvent.title}"?`)
+    if (!shouldDelete) return
+    setIsSubmitting(true)
+    setModalError(null)
+    try {
+      await deleteEvent(property.id, editingEvent.id)
+      removeEventFromState(editingEvent.id)
+      handleCloseModal()
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : 'No se pudo eliminar el evento.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [editingEvent, handleCloseModal, property.id, removeEventFromState])
 
   const closeDetails = useCallback(() => {
     setSelectedEvent(null)
@@ -494,14 +506,6 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
     setIsModalOpen(true)
     setSelectedEvent(null)
   }, [selectedEvent])
-
-  const updateEventInState = useCallback((updated: CalendarEvent) => {
-    setEvents((prev) => prev.map((event) => (event.id === updated.id ? updated : event)))
-  }, [])
-
-  const removeEventFromState = useCallback((eventId: string) => {
-    setEvents((prev) => prev.filter((event) => event.id !== eventId))
-  }, [])
 
   const handleConfirmRequest = useCallback(async () => {
     if (!selectedEvent) return
@@ -702,6 +706,7 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
         }
         onSubmit={handleSaveEvent}
         onCancel={handleCloseModal}
+        onDelete={editingEvent && editingEvent.source !== 'airbnb' ? handleDeleteEditingEvent : undefined}
         isSubmitting={isSubmitting}
         errorMessage={modalError}
       />

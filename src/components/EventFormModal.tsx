@@ -7,6 +7,7 @@ interface EventFormModalProps {
   range: { start: Date; end: Date; displayEnd: Date } | null
   onSubmit: (payload: { title: string; description?: string; location?: string; start: Date; end: Date }) => void
   onCancel: () => void
+  onDelete?: () => void
   isSubmitting?: boolean
   errorMessage?: string | null
   mode?: 'create' | 'edit'
@@ -39,6 +40,7 @@ export const EventFormModal = ({
   range,
   onSubmit,
   onCancel,
+  onDelete,
   isSubmitting = false,
   errorMessage,
   mode = 'create',
@@ -121,6 +123,11 @@ export const EventFormModal = ({
             {!localError && errorMessage && <span>{errorMessage}</span>}
           </div>
           <div className="modal-actions">
+            {mode === 'edit' && onDelete && (
+              <button type="button" className="danger" onClick={onDelete} disabled={isSubmitting} style={{ marginRight: 'auto' }}>
+                {t('delete')}
+              </button>
+            )}
             <button type="button" className="secondary" onClick={onCancel} disabled={isSubmitting}>{t('cancel')}</button>
             <button type="submit" className="primary" disabled={isSubmitting}>
               {isSubmitting ? t('eventFormSaving') : mode === 'edit' ? t('eventFormSaveChanges') : t('eventFormCreate')}

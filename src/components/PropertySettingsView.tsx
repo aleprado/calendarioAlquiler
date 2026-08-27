@@ -547,28 +547,30 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                   <p className="field-hint" style={{ marginBottom: '0.75rem' }}>
                     Recibe una alerta flotante y un timbre sonoro en tu dispositivo al instante cuando un huésped envíe una nueva solicitud de reserva.
                   </p>
-                  <div className="input-button-row" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '0.9rem', alignSelf: 'center', fontWeight: 500 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-primary-dark)', padding: '0.4rem 0.6rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'fit-content', maxWidth: '100%' }}>
                       Estado actual:{' '}
                       {notificationPermission === 'granted'
                         ? '✅ Permitidas'
                         : notificationPermission === 'denied'
                         ? '❌ Denegadas en tu navegador'
                         : '⚠️ Pendiente de autorización'}
-                    </span>
-                    {notificationPermission !== 'granted' && (
-                      <button type="button" className="primary" onClick={() => void handleRequestNotification()}>
-                        Activar Notificaciones Push
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', width: '100%' }}>
+                      {notificationPermission !== 'granted' && (
+                        <button type="button" className="primary" onClick={() => void handleRequestNotification()}>
+                          Activar Notificaciones Push
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={isTestingPush}
+                        onClick={() => void handleTestPush()}
+                      >
+                        {isTestingPush ? '📲 Enviando...' : '📲 Enviar Push de Prueba'}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={isTestingPush}
-                      onClick={() => void handleTestPush()}
-                    >
-                      {isTestingPush ? '📲 Enviando...' : '📲 Enviar Notificación Push de Prueba (Real)'}
-                    </button>
+                    </div>
                   </div>
                   {notificationPermission === 'denied' && (
                     <div className="alert alert--inline" style={{ marginTop: '0.85rem' }} role="alert">
