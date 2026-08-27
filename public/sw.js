@@ -14,8 +14,9 @@ self.addEventListener('push', (event) => {
   let data = {
     title: '¡Nueva solicitud de reserva! 🏠',
     body: 'Se ha registrado una nueva consulta para tu propiedad.',
-    icon: '/favicon.svg',
+    icon: '/logo.png',
     url: '/',
+    tag: 'reservation-alert',
   }
 
   if (event.data) {
@@ -29,11 +30,15 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/favicon.svg',
-    badge: '/favicon.svg',
-    vibrate: [200, 100, 200],
+    icon: data.icon || '/logo.png',
+    badge: '/logo.png',
+    vibrate: [300, 100, 300, 100, 300],
+    tag: data.tag || 'reservation-alert',
+    renotify: true,
+    requireInteraction: true,
     data: {
       url: data.url || '/',
+      dateOfArrival: Date.now(),
     },
     actions: [
       { action: 'open', title: 'Ver Reserva' },

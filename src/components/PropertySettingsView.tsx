@@ -6,8 +6,8 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
   isNotificationSupported,
-  playNotificationSound,
-  showReservationRequestNotification,
+  registerPushSubscriptionForProperty,
+  sendTestPushNotification,
 } from '../services/notificationService'
 
 interface PropertySettingsViewProps {
@@ -74,13 +74,45 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
     })
   }, [property])
 
+  const [isTestingPush, setIsTestingPush] = useState(false)
+
   const handleRequestNotification = async () => {
-    const res = await requestNotificationPermission()
+    const res = await requestNotificationPermission(property.id)
     setNotificationPermission(res)
     if (res === 'granted') {
-      showToast('¡Notificaciones del navegador activadas!', 'success')
+      showToast('¡Notificaciones Push activadas y registradas para esta propiedad!', 'success')
     } else if (res === 'denied') {
       showToast('Permiso de notificaciones denegado en tu navegador.', 'info')
+    }
+  }
+
+  const handleTestPush = async () => {
+    setIsTestingPush(true)
+    try {
+      if (notificationPermission === 'granted') {
+        await registerPushSubscriptionForProperty(property.id)
+      }
+      const res = await sendTestPushNotification(property.id)
+      if (res.sent > 0) {
+        showToast(
+          `¡Push enviado! (${res.sent} dispositivo${res.sent > 1 ? 's' : ''} notificado${res.sent > 1 ? 's' : ''})`,
+          'success',
+        )
+      } else if (res.totalSubscriptions === 0) {
+        showToast(
+          'No hay suscripciones Push registradas. Haz clic en "Activar Notificaciones Push" primero en este dispositivo.',
+          'info',
+        )
+      } else {
+        showToast(
+          `Se encontraron ${res.totalSubscriptions} dispositivos pero falló la entrega. Verifica la conectividad.`,
+          'error',
+        )
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error al enviar notificación de prueba', 'error')
+    } finally {
+      setIsTestingPush(false)
     }
   }
 
@@ -524,7 +556,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                         ? '❌ Denegadas en tu navegador'
                         : '⚠️ Pendiente de autorización'}
                     </span>
-                    {notificationPermission === 'default' && (
+                    {notificationPermission !== 'granted' && (
                       <button type="button" className="primary" onClick={() => void handleRequestNotification()}>
                         Activar Notificaciones Push
                       </button>
@@ -532,12 +564,10 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                     <button
                       type="button"
                       className="secondary"
-                      onClick={() => {
-                        playNotificationSound()
-                        showReservationRequestNotification(property.name, 'Huésped de Prueba', '14/09/2026 al 18/09/2026')
-                      }}
+                      disabled={isTestingPush}
+                      onClick={() => void handleTestPush()}
                     >
-                      🔊 Probar Sonido y Notificación
+                      {isTestingPush ? '📲 Enviando...' : '📲 Enviar Notificación Push de Prueba (Real)'}
                     </button>
                   </div>
                   {notificationPermission === 'denied' && (

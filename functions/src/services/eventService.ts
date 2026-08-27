@@ -189,11 +189,16 @@ export class EventService {
     const formattedEnd = format(requestedRange.end, 'dd/MM/yyyy')
 
     // Web Push notification to host device (works even with closed browser)
-    void pushService.sendPropertyWebPush(property.id, {
-      title: '¡Nueva solicitud de reserva! 🏠',
-      body: `${payload.requesterName} solicitó reservar ${property.name} (${formattedStart} al ${formattedEnd})`,
-      url: '/',
-    })
+    void pushService
+      .sendPropertyWebPush(property.id, {
+        title: '¡Nueva solicitud de reserva! 🏠',
+        body: `${payload.requesterName} solicitó reservar ${property.name} (${formattedStart} al ${formattedEnd})`,
+        url: '/',
+        tag: `reservation-request-${Date.now()}`,
+      })
+      .catch((err) => {
+        console.error('[EventService] Failed sending push notification for new reservation:', err)
+      })
 
     const notificationSent = await sendReservationRequestEmail({
       to: recipients,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FC } from 'react'
 import type { EventProps, SlotInfo } from 'react-big-calendar'
 import { addMonths, format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -11,7 +11,7 @@ import { CotizadorWidget } from './CotizadorWidget'
 import { MetricsView } from './MetricsView'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { getFirestoreDb } from '../lib/firebase'
-import { registerPushSubscriptionForProperty, showReservationRequestNotification } from '../services/notificationService'
+import { registerPushSubscriptionForProperty } from '../services/notificationService'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -293,8 +293,6 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       .sort((left, right) => left.start.getTime() - right.start.getTime())
   }, [activeMonth, visibleEvents])
 
-  const knownPendingIdsRef = useRef<Set<string> | null>(null)
-
   const loadEvents = useCallback(
     async (options?: { skipClearError?: boolean; silent?: boolean }) => {
       if (!options?.silent) {
@@ -306,21 +304,6 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
       try {
         const payload = await fetchEvents(property.id)
         const mapped = payload.map(toCalendarEvent).sort((a, b) => a.start.getTime() - b.start.getTime())
-
-        // Detect newly created pending requests for sound chime & push notification
-        const pendingEvents = mapped.filter((evt) => evt.status === 'pending')
-        if (knownPendingIdsRef.current === null) {
-          knownPendingIdsRef.current = new Set(pendingEvents.map((evt) => evt.id))
-        } else {
-          for (const evt of pendingEvents) {
-            if (!knownPendingIdsRef.current.has(evt.id)) {
-              knownPendingIdsRef.current.add(evt.id)
-              const rangeText = `${format(evt.start, 'dd/MM/yyyy')} al ${format(evt.end, 'dd/MM/yyyy')}`
-              showReservationRequestNotification(property.name, evt.title || 'Solicitud web', rangeText)
-            }
-          }
-        }
-
         setEvents(mapped)
       } catch (error) {
         if (!options?.silent) {
@@ -332,7 +315,7 @@ export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspac
         }
       }
     },
-    [property.id, property.name],
+    [property.id],
   )
 
   useEffect(() => {

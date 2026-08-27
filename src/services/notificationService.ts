@@ -2,7 +2,7 @@ import { apiRequest } from '../api/http'
 
 const VAPID_PUBLIC_KEY =
   import.meta.env.VITE_VAPID_PUBLIC_KEY ||
-  'BN69lsJppxa6138aXSSN8KQ65SKPIXX34IYlUT6m7dZl06RpUaPy8UrfLLzHs5uu9YcOY6M4Ti_SmqxUTyaoHjo'
+  'BEjLiN2aPlQKzKfRkPwK9Zueo_ON_FiPPBPmQVm4U8l4dK7m7W8Zmt0Fw2w1G9_OB7TBuiDId94Kw-FvrdZhtoA'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -13,6 +13,14 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i)
   }
   return outputArray
+}
+
+function areUint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.byteLength !== b.byteLength) return false
+  for (let i = 0; i < a.byteLength; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
 }
 
 export const isNotificationSupported = (): boolean =>
@@ -54,11 +62,23 @@ export const registerPushSubscriptionForProperty = async (propertyId: string) =>
     const reg = await navigator.serviceWorker.register('/sw.js')
     await navigator.serviceWorker.ready
 
+    const targetKeyArray = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     let sub = await reg.pushManager.getSubscription()
+
+    // If subscription already exists, check if it matches the current VAPID key
+    if (sub && sub.options && sub.options.applicationServerKey) {
+      const existingKeyArray = new Uint8Array(sub.options.applicationServerKey)
+      if (!areUint8ArraysEqual(existingKeyArray, targetKeyArray)) {
+        console.info('[NotificationService] VAPID key changed, renewing subscription...')
+        await sub.unsubscribe()
+        sub = null
+      }
+    }
+
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: targetKeyArray,
       })
     }
 
@@ -67,15 +87,24 @@ export const registerPushSubscriptionForProperty = async (propertyId: string) =>
         method: 'POST',
         json: sub.toJSON(),
       })
+      console.info(`[NotificationService] Push subscription registered for property ${propertyId}`)
     }
   } catch (err) {
     console.warn('[NotificationService] Push subscription registration failed:', err)
   }
 }
 
+export const sendTestPushNotification = async (
+  propertyId: string,
+): Promise<{ ok: boolean; sent: number; failed: number; totalSubscriptions: number }> => {
+  return await apiRequest(`/properties/${encodeURIComponent(propertyId)}/test-push`, {
+    method: 'POST',
+  })
+}
+
 /**
-  * Plays a pleasant dual-tone chime (E5 -> A5) using Web Audio API synth oscillator.
-  */
+ * Plays a pleasant dual-tone chime (E5 -> A5) using Web Audio API synth oscillator.
+ */
 export const playNotificationSound = () => {
   if (typeof window === 'undefined') return
   try {
@@ -132,8 +161,8 @@ export const showReservationRequestNotification = async (
       if (reg) {
         await reg.showNotification(title, {
           body,
-          icon: '/favicon.svg',
-          badge: '/favicon.svg',
+          icon: '/logo.png',
+          badge: '/logo.png',
           data: { url: '/' },
         })
         return
@@ -142,7 +171,7 @@ export const showReservationRequestNotification = async (
 
     const notification = new Notification(title, {
       body,
-      icon: '/favicon.svg',
+      icon: '/logo.png',
       tag: `reservation-request-${Date.now()}`,
     })
     notification.onclick = () => {

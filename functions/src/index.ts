@@ -6,6 +6,7 @@ import { authService, type AuthenticatedRequest } from './services/authService'
 import { propertyService } from './services/propertyService'
 import { propertyRepository } from './repositories/propertyRepository'
 import { eventService } from './services/eventService'
+import { pushService } from './services/pushService'
 import { mapLinkService } from './services/mapLinkService'
 import { googlePhotosService } from './services/googlePhotosService'
 import { ServiceError, isServiceError } from './utils/errors'
@@ -251,6 +252,29 @@ propertyRouter.post(
       await propertyRepository.addPushSubscription(req.params.propertyId, subscription)
     }
     res.json({ ok: true })
+  }),
+)
+
+propertyRouter.post(
+  '/:propertyId/test-push',
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const userId = getUserId(req)
+    const property = await propertyService.getOwnedProperty(userId, req.params.propertyId)
+    const propertyName = property.name || 'Propiedad'
+
+    const result = await pushService.sendPropertyWebPush(req.params.propertyId, {
+      title: '🔔 ¡Prueba de Notificación Push!',
+      body: `Las notificaciones para "${propertyName}" están configuradas y funcionando en segundo plano.`,
+      url: '/',
+      tag: `test-push-${Date.now()}`,
+    })
+
+    res.json({
+      ok: true,
+      sent: result.sent,
+      failed: result.failed,
+      totalSubscriptions: property?.pushSubscriptions?.length ?? 0,
+    })
   }),
 )
 
