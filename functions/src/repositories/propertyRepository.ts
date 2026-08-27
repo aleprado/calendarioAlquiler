@@ -163,6 +163,9 @@ export class PropertyRepository {
       defaultCheckOutTime: normalizeOptionalString((data as Record<string, unknown>).defaultCheckOutTime) ?? '11:00',
       publicViewsCount: normalizeOptionalNumber((data as Record<string, unknown>).publicViewsCount) ?? 0,
       publicQuotesCount: normalizeOptionalNumber((data as Record<string, unknown>).publicQuotesCount) ?? 0,
+      pushSubscriptions: Array.isArray((data as Record<string, unknown>).pushSubscriptions)
+        ? ((data as Record<string, unknown>).pushSubscriptions as { endpoint: string; keys: { p256dh: string; auth: string } }[])
+        : [],
     }
   }
 
