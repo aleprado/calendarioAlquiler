@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react'
 import type { EventProps, SlotInfo } from 'react-big-calendar'
 import { addMonths, format, startOfMonth } from 'date-fns'
-import { es, ptBR, type Locale as DateFnsLocale } from 'date-fns/locale'
+import { es } from 'date-fns/locale'
 import { EventFormModal } from './EventFormModal'
 import { EventDetailsModal } from './EventDetailsModal'
 import { MultiMonthCalendar, type CalendarEventPropGetter, type MonthEventComponentProps } from './MultiMonthCalendar'
@@ -12,7 +12,6 @@ import { MetricsView } from './MetricsView'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { getFirestoreDb } from '../lib/firebase'
 import { registerPushSubscriptionForProperty, showReservationRequestNotification } from '../services/notificationService'
-import { useLocale } from '../i18n/LocaleContext'
 
 const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
@@ -48,21 +47,20 @@ const normalizeSlotSelection = (start: Date, end: Date) => {
   }
 }
 
-const getMonthLabel = (date: Date, localeObj: DateFnsLocale) => format(date, 'MMMM yyyy', { locale: localeObj })
+const getMonthLabel = (date: Date) => format(date, 'MMMM yyyy', { locale: es })
 
-const eventStatusLabel = (event: CalendarEvent, t: any) => {
-  if (event.status === 'confirmed') return t('eventDetailsStatusConfirmed')
-  if (event.status === 'pending') return t('eventDetailsPending')
-  if (event.status === 'tentative') return t('eventDetailsTentative')
-  return t('eventDetailsDeclined')
+const eventStatusLabel = (event: CalendarEvent) => {
+  if (event.status === 'confirmed') return 'Confirmado'
+  if (event.status === 'pending') return 'Pendiente'
+  if (event.status === 'tentative') return 'Tentativo'
+  return 'Declinado'
 }
 
-const eventCleaningLabel = (event: CalendarEvent, t: any) => {
-  if (event.status !== 'confirmed') return t('eventDetailsCleaningNone')
-
-  if (event.cleaningStatus === 'pending') return t('eventDetailsCleaningPending')
-  if (event.cleaningStatus === 'done') return t('eventDetailsCleaningDone')
-  return t('eventDetailsCleaningNone')
+const eventCleaningLabel = (event: CalendarEvent) => {
+  if (event.status !== 'confirmed') return 'Limpieza N/A'
+  if (event.cleaningStatus === 'pending') return 'Limpieza pendiente'
+  if (event.cleaningStatus === 'done') return 'Limpieza lista'
+  return 'Limpieza sin definir'
 }
 
 const eventSourceLabel = (event: CalendarEvent) => {
@@ -267,9 +265,7 @@ interface PropertyWorkspaceProps {
   onOpenSettings?: () => void
 }
 
-export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpenSettings }) => {
-  const { t, locale } = useLocale()
-  const dateFnsLocale = locale === 'pt' ? ptBR : es
+export const PropertyWorkspace = ({ property, onOpenSettings }: PropertyWorkspaceProps) => {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -349,7 +345,7 @@ export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpen
       } catch (error) {
         syncFailed = true
         if (active) {
-          setGlobalError(error instanceof Error ? error.message : t('workspaceSyncError'))
+          setGlobalError(error instanceof Error ? error.message : 'No se pudo sincronizar con Airbnb.')
         }
       }
       await loadEvents(syncFailed ? { skipClearError: true } : undefined)
@@ -610,11 +606,51 @@ export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpen
         </div>
       )}
 
-    <div className="property-workspace">
       {globalError && (
-        <div className="alert" role="alert" style={{ marginBottom: '1rem' }}>
+        <div className="alert" role="alert">
           <span>{globalError}</span>
           <button type="button" onClick={() => setGlobalError(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      <nav className="workspace-tabs" aria-label="Secciones de la propiedad">
+        <button
+          type="button"
+          className={`workspace-tab${activeTab === 'calendar' ? ' workspace-tab--active' : ''}`}
+          onClick={() => setActiveTab('calendar')}
+        >
+          <span className="workspace-tab__icon">📅</span>
+          <span>Calendario y Cotizador</span>
+        </button>
+        <button
+          type="button"
+          className={`workspace-tab${activeTab === 'metrics' ? ' workspace-tab--active' : ''}`}
+          onClick={() => setActiveTab('metrics')}
+        >
+          <span className="workspace-tab__icon">📊</span>
+          <span>Métricas y Estadísticas</span>
+        </button>
+      </nav>
+
+      {activeTab === 'metrics' ? (
+        <MetricsView property={property} events={events} />
+      ) : (
+        <>
+          <CotizadorWidget
+            mode="private"
+            monthlyRatesUSD={property.quoterMonthlyRatesUSD}
+            adminCommissionPercent={property.quoterAdminCommissionPercent}
+            cleaningFeeUSD={property.quoterCleaningFeeUSD}
+            customExchangeRates={property.quoterCustomExchangeRates}
+            checkInTime={property.defaultCheckInTime ?? '15:00'}
+            checkOutTime={property.defaultCheckOutTime ?? '11:00'}
+            onOpenSettings={onOpenSettings}
+          />
+
+          <div className="calendar-card">
+            <div className="calendar-card__toolbar">
               <button type="button" className="primary" onClick={handleOpenNewEventModal}>
                 Nuevo evento
               </button>
@@ -702,5 +738,3 @@ export const PropertyWorkspace: FC<PropertyWorkspaceProps> = ({ property, onOpen
     </section>
   )
 }
-
-
