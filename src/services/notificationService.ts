@@ -84,6 +84,7 @@ export const registerPushSubscriptionForProperty = async (propertyId: string) =>
 
     if (sub) {
       await apiRequest(`/properties/${encodeURIComponent(propertyId)}/push-subscription`, {
+        auth: true,
         method: 'POST',
         json: sub.toJSON(),
       })
@@ -98,6 +99,7 @@ export const sendTestPushNotification = async (
   propertyId: string,
 ): Promise<{ ok: boolean; sent: number; failed: number; totalSubscriptions: number }> => {
   return await apiRequest(`/properties/${encodeURIComponent(propertyId)}/test-push`, {
+    auth: true,
     method: 'POST',
   })
 }
