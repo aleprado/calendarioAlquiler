@@ -6,7 +6,6 @@ import {
   createProperty,
   joinProperty,
   resolveGoogleMapsLink as resolveGoogleMapsLinkApi,
-  importGooglePhotosAlbum as importGooglePhotosAlbumApi,
 } from '../api/properties'
 import type { PropertyDTO } from '../types'
 import { PropertyWorkspace } from '../components/PropertyWorkspace'
@@ -391,7 +390,6 @@ export const DashboardPage = () => {
             onPropertyUpdated={(updated) => {
               setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
             }}
-            onImportGooglePhotos={(url) => importGooglePhotosAlbumApi(url).then((res) => res.images)}
             onResolveMapLink={(url) =>
               resolveGoogleMapsLinkApi(url).then((res) => ({
                 placeId: res.googleMapsPlaceId ?? undefined,

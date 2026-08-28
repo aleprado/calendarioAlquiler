@@ -14,7 +14,6 @@ interface PropertySettingsViewProps {
   property: PropertyDTO
   onBack: () => void
   onPropertyUpdated: (updated: PropertyDTO) => void
-  onImportGooglePhotos: (url: string) => Promise<string[]>
   onResolveMapLink: (url: string) => Promise<{ placeId?: string; lat?: string; lng?: string }>
 }
 
@@ -24,13 +23,11 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
   property,
   onBack,
   onPropertyUpdated,
-  onImportGooglePhotos,
   onResolveMapLink,
 }) => {
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<TabType>('cotizador')
   const [isSaving, setIsSaving] = useState(false)
-  const [isImportingPhotos, setIsImportingPhotos] = useState(false)
   const [isResolvingMap, setIsResolvingMap] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
@@ -222,29 +219,6 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
       showToast(msg, 'error')
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleImportPhotos = async () => {
-    if (!form.googlePhotosUrl.trim()) {
-      showToast('Ingresa una URL de álbum de Google Fotos primero.', 'info')
-      return
-    }
-    setIsImportingPhotos(true)
-    try {
-      const imported = await onImportGooglePhotos(form.googlePhotosUrl)
-      if (imported.length > 0) {
-        setForm((prev) => {
-          const currentUrls = parseUrlList(prev.galleryImageUrls)
-          const merged = Array.from(new Set([...imported, ...currentUrls]))
-          return { ...prev, galleryImageUrls: merged.join('\n') }
-        })
-        showToast(`¡Se importaron ${imported.length} imágenes del álbum!`, 'success')
-      }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error al importar fotos', 'error')
-    } finally {
-      setIsImportingPhotos(false)
     }
   }
 
@@ -673,7 +647,7 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
           {activeTab === 'gallery' && (
             <section className="settings-section-panel">
               <div className="settings-card-box">
-                <h3>Foto Principal (Portada del Folleto Visual)</h3>
+                <h3>Foto Principal (Portada)</h3>
                 <div className="form-group">
                   <label htmlFor="settings-cover-image">URL de Foto Principal (Portada)</label>
                   <input
@@ -684,13 +658,13 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
                     placeholder="https://.../portada.jpg"
                   />
                   <span className="field-hint">
-                    Esta imagen se usará como el fondo principal del banner público de tu propiedad. Si la dejas vacía, se tomará automáticamente la primera foto de la galería. Puedes seleccionarla haciendo clic en &ldquo;⭐ Usar como Portada&rdquo; en cualquier foto de abajo.
+                    Esta imagen se usará como la portada y fondo principal del banner de tu propiedad en la vista pública y folletos visuales.
                   </span>
                 </div>
                 {form.coverImageUrl.trim() && (
                   <div className="cover-preview-box" style={{ marginTop: '0.75rem' }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                      Vista previa de la Portada seleccionada:
+                      Vista previa de la Portada:
                     </span>
                     <img
                       src={form.coverImageUrl.trim()}
@@ -703,90 +677,19 @@ export const PropertySettingsView: FC<PropertySettingsViewProps> = ({
               </div>
 
               <div className="settings-card-box">
-                <h3>Álbum Dinámico de Google Fotos</h3>
+                <h3>Álbum de Google Fotos</h3>
                 <div className="form-group">
                   <label htmlFor="settings-gphotos-link">Enlace de Álbum Público de Google Fotos</label>
-                  <div className="input-button-row">
-                    <input
-                      id="settings-gphotos-link"
-                      type="url"
-                      value={form.googlePhotosUrl}
-                      onChange={(e) => setForm((prev) => ({ ...prev, googlePhotosUrl: e.target.value }))}
-                      placeholder="https://photos.app.goo.gl/tu_album"
-                    />
-                    <button type="button" className="secondary" onClick={() => void handleImportPhotos()} disabled={isImportingPhotos}>
-                      {isImportingPhotos ? 'Importando...' : 'Cargar Fotos a Galería'}
-                    </button>
-                  </div>
-                  <span className="field-hint">
-                    ✨ <strong>Sincronización Automática:</strong> Al colocar el enlace de Google Fotos y guardar cambios, las imágenes se cargarán y actualizarán dinámicamente en tu página pública.
-                  </span>
-                </div>
-              </div>
-
-              {parseUrlList(form.galleryImageUrls).length > 0 && (
-                <div className="settings-card-box">
-                  <h3>Gestión Visual de Fotos de la Galería ({parseUrlList(form.galleryImageUrls).length})</h3>
-                  <p className="field-hint" style={{ marginBottom: '1rem' }}>
-                    Haz clic en <strong>&ldquo;⭐ Usar como Portada&rdquo;</strong> en cualquier imagen para fijarla como la foto principal del banner.
-                  </p>
-                  <div className="settings-photo-grid">
-                    {parseUrlList(form.galleryImageUrls).map((url, idx) => {
-                      const isCover = form.coverImageUrl.trim() === url.trim()
-                      return (
-                        <div key={`${url}-${idx}`} className={`photo-thumb-card ${isCover ? 'photo-thumb-card--cover' : ''}`}>
-                          <div className="photo-thumb-img-wrapper">
-                            <img src={url} alt={`Foto ${idx + 1}`} loading="lazy" />
-                            {isCover && <span className="cover-badge">⭐ Portada Principal</span>}
-                          </div>
-                          <div className="photo-thumb-actions">
-                            {!isCover ? (
-                              <button
-                                type="button"
-                                className="secondary btn-sm"
-                                onClick={() => setForm((prev) => ({ ...prev, coverImageUrl: url }))}
-                              >
-                                ⭐ Usar como Portada
-                              </button>
-                            ) : (
-                              <span className="active-cover-tag">✓ Portada Actual</span>
-                            )}
-                            <button
-                              type="button"
-                              className="danger btn-sm"
-                              onClick={() => {
-                                const currentList = parseUrlList(form.galleryImageUrls)
-                                const updatedList = currentList.filter((_, i) => i !== idx)
-                                const newCover = isCover ? (updatedList[0] ?? '') : form.coverImageUrl
-                                setForm((prev) => ({
-                                  ...prev,
-                                  galleryImageUrls: updatedList.join('\n'),
-                                  coverImageUrl: newCover,
-                                }))
-                              }}
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="settings-card-box">
-                <h3>Colección de URLs de Galería (Edición por texto)</h3>
-                <div className="form-group">
-                  <label htmlFor="settings-gallery-list">URLs directas de Galería (Una por línea)</label>
-                  <textarea
-                    id="settings-gallery-list"
-                    value={form.galleryImageUrls}
-                    onChange={(e) => setForm((prev) => ({ ...prev, galleryImageUrls: e.target.value }))}
-                    placeholder={'https://.../foto1.jpg\nhttps://.../foto2.jpg'}
-                    rows={6}
+                  <input
+                    id="settings-gphotos-link"
+                    type="url"
+                    value={form.googlePhotosUrl}
+                    onChange={(e) => setForm((prev) => ({ ...prev, googlePhotosUrl: e.target.value }))}
+                    placeholder="https://photos.app.goo.gl/tu_album"
                   />
-                  <span className="field-hint">Las fotos se mostrarán paginadas en la página pública en bloques de 8 imágenes.</span>
+                  <span className="field-hint">
+                    ✨ <strong>Carga Dinámica:</strong> Las fotos de este álbum público se cargarán y mostrarán automáticamente de forma dinámica en la galería de tu página pública.
+                  </span>
                 </div>
               </div>
             </section>
